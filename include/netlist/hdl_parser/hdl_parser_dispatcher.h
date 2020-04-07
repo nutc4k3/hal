@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include "def.h"
-
 #include "core/program_options.h"
+#include "def.h"
+#include "netlist/hdl_parser/hdl_parser.h"
 
 /** forward declaration */
 class netlist;
-class hdl_parser;
+// class hdl_parser;
 
 #include <set>
 #include <string>
@@ -83,4 +83,3 @@ namespace hdl_parser_dispatcher
     */
     std::shared_ptr<netlist> parse(const std::string& gate_library, const std::string& parser_name, const std::string& file_name);
 }    // namespace hdl_parser_dispatcher
-

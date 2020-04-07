@@ -23,10 +23,8 @@
 
 #pragma once
 
-#include "def.h"
-
 #include "core/token_stream.h"
-
+#include "def.h"
 #include "netlist/boolean_function.h"
 #include "netlist/gate_library/gate_library_parser/gate_library_parser.h"
 #include "netlist/gate_library/gate_type/gate_type.h"
@@ -70,7 +68,8 @@ private:
         std::string name;
         gate_type::base_type type;
         std::vector<std::string> input_pins, output_pins;
-        std::unordered_map<std::string, token> functions;
+        std::map<std::string, std::pair<u32, u32>> pin_bounds;
+        std::unordered_map<std::string, token<std::string>> functions;
         std::string next_state, clocked_on, reset, set;
         gate_type_sequential::set_reset_behavior special_behavior_var1, special_behavior_var2;
         std::string data_category, data_identifier, data_direction;
@@ -83,6 +82,7 @@ private:
             input_pins.clear();
             output_pins.clear();
             functions.clear();
+            pin_bounds.clear();
             next_state            = "";
             clocked_on            = "";
             reset                 = "";
@@ -97,16 +97,16 @@ private:
         }
     } m_current_cell;
 
-    token_stream m_token_stream;
+    token_stream<std::string> m_token_stream;
 
     bool tokenize();
     bool parse_tokens();
 
-    bool parse_cell(token_stream& library_stream);
-    bool parse_pin(token_stream& cell_stream);
-    bool parse_ff(token_stream& cell_stream);
-    bool parse_latch(token_stream& cell_stream);
-    bool parse_lut(token_stream& cell_stream);
+    bool parse_cell(token_stream<std::string>& library_stream);
+    bool parse_pin(token_stream<std::string>& cell_stream);
+    bool parse_ff(token_stream<std::string>& cell_stream);
+    bool parse_latch(token_stream<std::string>& cell_stream);
+    bool parse_lut(token_stream<std::string>& cell_stream);
     std::shared_ptr<gate_type> construct_gate_type();
 
     void remove_comments(std::string& line, bool& multi_line_comment);

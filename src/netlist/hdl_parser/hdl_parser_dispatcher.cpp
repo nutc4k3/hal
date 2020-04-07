@@ -1,19 +1,77 @@
 #include "netlist/hdl_parser/hdl_parser_dispatcher.h"
 
 #include "core/log.h"
-
-#include "netlist/netlist.h"
-#include "netlist/netlist_factory.h"
-
 #include "netlist/event_system/event_controls.h"
-
+#include "netlist/gate_library/gate_library_manager.h"
 #include "netlist/hdl_parser/hdl_parser.h"
 #include "netlist/hdl_parser/hdl_parser_verilog.h"
 #include "netlist/hdl_parser/hdl_parser_vhdl.h"
-#include "netlist/gate_library/gate_library_manager.h"
+#include "netlist/netlist.h"
+#include "netlist/netlist_factory.h"
 
 namespace hdl_parser_dispatcher
 {
+    namespace
+    {
+        template<typename T>
+        std::shared_ptr<netlist> parse_hdl(const hal::path& file_name, const std::vector<std::string>& gate_libraries)
+        {
+            std::ifstream ifs;
+            std::stringstream ss;
+
+            auto begin_time = std::chrono::high_resolution_clock::now();
+
+            log_info("hdl_parser", "parsing '{}'...", file_name.string());
+
+            ifs.open(file_name.c_str(), std::ifstream::in);
+            if (!ifs.is_open())
+            {
+                log_error("hdl_parser", "cannot open '{}'", file_name.string());
+                return nullptr;
+            }
+            ss << ifs.rdbuf();
+            ifs.close();
+
+            auto parser = T(ss);
+            if (!parser.parse())
+            {
+                log_error("hdl_parser", "parser cannot parse file '{}'.", file_name.string());
+                return nullptr;
+            }
+
+            log_info("hdl_parser",
+                     "parsed '{}' in {:2.2f} seconds.",
+                     file_name.string(),
+                     (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - begin_time).count() / 1000);
+
+            for (const auto& gate_library : gate_libraries)
+            {
+                begin_time = std::chrono::high_resolution_clock::now();
+
+                log_info("hdl_parser", "instantiating '{}' using gate library '{}'...", file_name.string(), gate_library);
+
+                std::shared_ptr<netlist> netlist = parser.instantiate(gate_library);
+                if (netlist == nullptr)
+                {
+                    log_error("hdl_parser", "parser cannot instantiate file '{}' using gate library '{}'.", file_name.string(), gate_library);
+                    return nullptr;
+                }
+
+                netlist->set_input_filename(file_name.string());
+
+                log_info("hdl_parser",
+                         "instantiated '{}' in {:2.2f} seconds.",
+                         file_name.string(),
+                         (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - begin_time).count() / 1000);
+
+                return netlist;
+            }
+
+            log_error("hdl_parser", "no suitable gate library found!");
+            return nullptr;
+        }
+    }    // namespace
+
     program_options get_cli_options()
     {
         program_options description;
@@ -50,71 +108,50 @@ namespace hdl_parser_dispatcher
             log_info("hdl_parser", "selected parser '{}' by file name extension.", parser_name);
         }
 
+        std::vector<std::string> gate_libraries;
         if (!args.is_option_set("--gate-library"))
         {
             log_warning("hdl_parser", "no gate library specified. trying to auto-detect gate library...");
-            for (const auto& lib : gate_library_manager::get_gate_libraries())
+            for (const auto& it : gate_library_manager::get_gate_libraries())
             {
-                std::shared_ptr<netlist> netlist = parse(lib->get_name(), parser_name, file_name);
-                if (netlist != nullptr)
-                {
-                    log_info("hdl_parser", "auto-selected '{}' for this netlist.", lib->get_name());
-                    return netlist;
-                }
+                gate_libraries.push_back(it->get_name());
             }
-            log_error("hdl_parser", "no suitable gate library found!");
+        }
+        else
+        {
+            gate_libraries.push_back(args.get_parameter("--gate-library"));
+        }
+
+        if (parser_name == "vhdl")
+        {
+            return parse_hdl<hdl_parser_vhdl>(file_name, gate_libraries);
+        }
+        else if (parser_name == "verilog")
+        {
+            return parse_hdl<hdl_parser_verilog>(file_name, gate_libraries);
+        }
+        else
+        {
+            log_error("hdl_parser", "parser '{}' is unknown.", parser_name);
             return nullptr;
         }
-        std::string gate_library = args.get_parameter("--gate-library");
-        return parse(gate_library, parser_name, file_name);
     }
 
     std::shared_ptr<netlist> parse(const std::string& gate_library, const std::string& parser_name, const hal::path& file_name)
     {
-        auto begin_time = std::chrono::high_resolution_clock::now();
-
-        log_info("hdl_parser", "parsing '{}' using gate library '{}'...", file_name.string(), gate_library);
-
-        std::ifstream ifs;
-        ifs.open(file_name.c_str(), std::ifstream::in);
-        if (!ifs.is_open())
-        {
-            log_error("hdl_parser", "cannot open '{}'", file_name.string());
-            return nullptr;
-        }
-        std::stringstream ss;
-        ss << ifs.rdbuf();
-        ifs.close();
-
-        std::shared_ptr<netlist> g = nullptr;
-
-        // event_controls::enable_all(false);
-
         if (parser_name == "vhdl")
-            g = hdl_parser_vhdl(ss).parse(gate_library);
-        else if (parser_name == "verilog")
-            g = hdl_parser_verilog(ss).parse(gate_library);
-        else
-            log_error("hdl_parser", "parser '{}' is unkown", parser_name);
-
-        if (g != nullptr)
         {
-            g->set_input_filename(file_name.string());
+            return parse_hdl<hdl_parser_vhdl>(file_name, {gate_library});
         }
-
-        // event_controls::enable_all(true);
-
-        if (g == nullptr)
+        else if (parser_name == "verilog")
         {
-            log_error("hdl_parser", "error while parsing '{}'!", file_name.string());
+            return parse_hdl<hdl_parser_verilog>(file_name, {gate_library});
+        }
+        else
+        {
+            log_error("hdl_parser", "parser '{}' is unknown.", parser_name);
             return nullptr;
         }
-
-        log_info("hdl_parser",
-                 "parsed '{}' in {:2.2f} seconds.",
-                 file_name.string(),
-                 (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - begin_time).count() / 1000);
-        return g;
     }
 
     std::shared_ptr<netlist> parse(const std::string& gate_library, const std::string& parser_name, const std::string& file_name)

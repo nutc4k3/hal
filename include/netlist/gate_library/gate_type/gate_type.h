@@ -122,11 +122,28 @@ public:
     void add_input_pins(const std::vector<std::string>& input_pins);
 
     /**
+     * Add an input pin group to the gate type.
+     *
+     * @param[in] group_identifier - The name of the input pin group.
+     * @param[in] index_to_pin_name_mapping - Mapping of an index within the group to the respective pin name.
+     */
+    // TODO python API
+    void add_input_pin_group(std::string group_identifier, std::map<u32, std::string> index_to_pin_name_mapping);
+
+    /**
      * Get a vector of input pins of the gate type.
      *
      * @returns A vector of input pins of the gate type.
      */
     std::vector<std::string> get_input_pins() const;
+
+    /**
+     * Get all input pin groups of the gate type.
+     * 
+     * @returns A map from group identifier to a map of indices to pin names. 
+     */
+    // TODO python API
+    std::map<std::string, std::map<u32, std::string>> get_input_pin_groups() const;
 
     /**
      * Add an output pin to the gate type.
@@ -143,11 +160,35 @@ public:
     void add_output_pins(const std::vector<std::string>& output_pins);
 
     /**
+     * Add an output pin group to the gate type.
+     *
+     * @param[in] group_identifier - The name of the output pin group.
+     * @param[in] index_to_pin_name_mapping - Mapping of an index within the group to the respective pin name.
+     */
+    // TODO python API
+    void add_output_pin_group(std::string group_identifier, std::map<u32, std::string> index_to_pin_name_mapping);
+
+    /**
      * Get a vector of output pins of the gate type.
      *
-     * @returns A vector of output pins of the gate type..
+     * @returns A vector of output pins of the gate type.
      */
+    // TODO python API
     std::vector<std::string> get_output_pins() const;
+
+    /**
+     * Get all output pin groups of the gate type.
+     * 
+     * @returns A map from group identifier to a map of indices to pin names. 
+     */
+    std::map<std::string, std::map<u32, std::string>> get_output_pin_groups() const;
+
+    /**
+     * Get the range of a pin, i.e., the indices of the signals belonging to one pin.
+     * 
+     * @returns A vector of indices.
+     */
+    std::vector<u32> get_pin_range(std::string pin_name) const;
 
     /**
      * Add a boolean function with the specified name to the gate type.
@@ -173,6 +214,9 @@ private:
 
     std::vector<std::string> m_input_pins;
     std::vector<std::string> m_output_pins;
+
+    std::map<std::string, std::map<u32, std::string>> m_input_pin_groups;
+    std::map<std::string, std::map<u32, std::string>> m_output_pin_groups;
 
     std::unordered_map<std::string, boolean_function> m_functions;
 
