@@ -50,38 +50,48 @@ bool gate_type::do_compare(const gate_type& other) const
 void gate_type::add_input_pin(std::string input_pin)
 {
     m_input_pins.push_back(input_pin);
+    m_input_pin_groups.emplace(input_pin, std::vector<u32>());
 }
 
 void gate_type::add_input_pins(const std::vector<std::string>& input_pins)
 {
-    m_input_pins.insert(m_input_pins.end(), input_pins.begin(), input_pins.end());
+    for (const auto& pin : input_pins)
+    {
+        m_input_pins.push_back(pin);
+        m_input_pin_groups.emplace(pin, std::vector<u32>());
+    }
 }
 
-void gate_type::add_input_pin_group(std::string group_identifier, std::map<u32, std::string> index_to_pin_name_mapping)
+void gate_type::add_input_pin_group(std::string name, std::vector<u32> range)
 {
-    m_input_pin_groups.emplace(group_identifier, index_to_pin_name_mapping);
-    for (const auto& pin : index_to_pin_name_mapping)
+    m_input_pin_groups.emplace(name, range);
+    for (const auto& index : range)
     {
-        m_input_pins.push_back(pin.second);
+        m_input_pins.push_back(name + "(" + std::to_string(index) + ")");
     }
 }
 
 void gate_type::add_output_pin(std::string output_pin)
 {
     m_output_pins.push_back(output_pin);
+    m_output_pin_groups.emplace(output_pin, std::vector<u32>());
 }
 
 void gate_type::add_output_pins(const std::vector<std::string>& output_pins)
 {
-    m_output_pins.insert(m_output_pins.end(), output_pins.begin(), output_pins.end());
+    for (const auto& pin : output_pins)
+    {
+        m_output_pins.push_back(pin);
+        m_output_pin_groups.emplace(pin, std::vector<u32>());
+    }
 }
 
-void gate_type::add_output_pin_group(std::string group_identifier, std::map<u32, std::string> index_to_pin_name_mapping)
+void gate_type::add_output_pin_group(std::string name, std::vector<u32> range)
 {
-    m_output_pin_groups.emplace(group_identifier, index_to_pin_name_mapping);
-    for (const auto& pin : index_to_pin_name_mapping)
+    m_output_pin_groups.emplace(name, range);
+    for (const auto& index : range)
     {
-        m_output_pins.push_back(pin.second);
+        m_output_pins.push_back(name + "(" + std::to_string(index) + ")");
     }
 }
 
@@ -105,7 +115,7 @@ std::vector<std::string> gate_type::get_input_pins() const
     return m_input_pins;
 }
 
-std::map<std::string, std::map<u32, std::string>> gate_type::get_input_pin_groups() const
+std::map<std::string, std::vector<u32>> gate_type::get_input_pin_groups() const
 {
     return m_input_pin_groups;
 }
@@ -115,7 +125,7 @@ std::vector<std::string> gate_type::get_output_pins() const
     return m_output_pins;
 }
 
-std::map<std::string, std::map<u32, std::string>> gate_type::get_output_pin_groups() const
+std::map<std::string, std::vector<u32>> gate_type::get_output_pin_groups() const
 {
     return m_output_pin_groups;
 }

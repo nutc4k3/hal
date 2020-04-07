@@ -124,11 +124,11 @@ public:
     /**
      * Add an input pin group to the gate type.
      *
-     * @param[in] group_identifier - The name of the input pin group.
-     * @param[in] index_to_pin_name_mapping - Mapping of an index within the group to the respective pin name.
+     * @param[in] name - The name of the input pin group.
+     * @param[in] range - Vector of signal indices.
      */
     // TODO python API
-    void add_input_pin_group(std::string group_identifier, std::map<u32, std::string> index_to_pin_name_mapping);
+    void add_input_pin_group(std::string name, std::vector<u32> range);
 
     /**
      * Get a vector of input pins of the gate type.
@@ -140,10 +140,10 @@ public:
     /**
      * Get all input pin groups of the gate type.
      * 
-     * @returns A map from group identifier to a map of indices to pin names. 
+     * @returns A map from group name to a range. 
      */
     // TODO python API
-    std::map<std::string, std::map<u32, std::string>> get_input_pin_groups() const;
+    std::map<std::string, std::vector<u32>> get_input_pin_groups() const;
 
     /**
      * Add an output pin to the gate type.
@@ -162,26 +162,26 @@ public:
     /**
      * Add an output pin group to the gate type.
      *
-     * @param[in] group_identifier - The name of the output pin group.
-     * @param[in] index_to_pin_name_mapping - Mapping of an index within the group to the respective pin name.
+     * @param[in] name - The name of the output pin group.
+     * @param[in] range - Vector of signal indices.
      */
     // TODO python API
-    void add_output_pin_group(std::string group_identifier, std::map<u32, std::string> index_to_pin_name_mapping);
+    void add_output_pin_group(std::string name, std::vector<u32> range);
 
     /**
      * Get a vector of output pins of the gate type.
      *
      * @returns A vector of output pins of the gate type.
      */
-    // TODO python API
     std::vector<std::string> get_output_pins() const;
 
     /**
      * Get all output pin groups of the gate type.
      * 
-     * @returns A map from group identifier to a map of indices to pin names. 
+     * @returns A map from group name to a range. 
      */
-    std::map<std::string, std::map<u32, std::string>> get_output_pin_groups() const;
+    // TODO python API
+    std::map<std::string, std::vector<u32>> get_output_pin_groups() const;
 
     /**
      * Get the range of a pin, i.e., the indices of the signals belonging to one pin.
@@ -215,8 +215,8 @@ private:
     std::vector<std::string> m_input_pins;
     std::vector<std::string> m_output_pins;
 
-    std::map<std::string, std::map<u32, std::string>> m_input_pin_groups;
-    std::map<std::string, std::map<u32, std::string>> m_output_pin_groups;
+    std::map<std::string, std::vector<u32>> m_input_pin_groups;
+    std::map<std::string, std::vector<u32>> m_output_pin_groups;
 
     std::unordered_map<std::string, boolean_function> m_functions;
 

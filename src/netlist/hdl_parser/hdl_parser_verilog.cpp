@@ -128,6 +128,8 @@ bool hdl_parser_verilog::parse_entity()
     entity e;
     std::set<std::string> port_names;
 
+    std::cout << "parsing entity..." << std::endl;
+
     m_token_stream.consume("module", true);
     e._line_number = m_token_stream.peek().number;
     e._name        = m_token_stream.consume();
@@ -197,6 +199,8 @@ bool hdl_parser_verilog::parse_entity()
 
 void hdl_parser_verilog::parse_port_list(std::set<std::string>& port_names)
 {
+    std::cout << "parsing port list..." << std::endl;
+
     m_token_stream.consume("(", true);
     auto ports = m_token_stream.extract_until(")");
     m_token_stream.consume(")", true);
@@ -213,6 +217,8 @@ bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::st
     i32 line_number       = m_token_stream.peek().number;
     std::string direction = m_token_stream.consume();
     auto ports            = parse_signal_list();
+
+    std::cout << "parsing port definition..." << std::endl;
 
     if (direction == "input")
     {
@@ -249,6 +255,8 @@ bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::st
 
 bool hdl_parser_verilog::parse_signal_definition(entity& e)
 {
+    std::cout << "parsing signal definition..." << std::endl;
+
     m_token_stream.consume("wire", true);
     auto signals = parse_signal_list();
 
@@ -270,6 +278,8 @@ bool hdl_parser_verilog::parse_assign(entity& e)
     m_token_stream.consume("=", true);
     auto right_str = m_token_stream.extract_until(";");
     m_token_stream.consume(";", true);
+
+    std::cout << "parsing assignment..." << std::endl;
 
     // extract assignments for each bit
     auto left_parts  = get_assignment_signals(e, left_str, false);
@@ -298,6 +308,8 @@ bool hdl_parser_verilog::parse_instance(entity& e)
     instance inst;
     inst._line_number = m_token_stream.peek().number;
     inst._type        = m_token_stream.consume();
+
+    std::cout << "parsing instance..." << std::endl;
 
     // parse generics map
     if (m_token_stream.consume("#("))
@@ -330,6 +342,8 @@ bool hdl_parser_verilog::parse_instance(entity& e)
 
 bool hdl_parser_verilog::parse_port_assign(entity& e, instance& inst)
 {
+    std::cout << "parsing port assignment..." << std::endl;
+
     m_token_stream.consume("(", true);
     auto port_str = m_token_stream.extract_until(")");
     m_token_stream.consume(")", true);
@@ -353,6 +367,7 @@ bool hdl_parser_verilog::parse_port_assign(entity& e, instance& inst)
             if (right_parts.second == 0)
             {
                 // error already printed in subfunction
+                std::cout << "FUCK 1" << std::endl;
                 return false;
             }
 
@@ -367,6 +382,8 @@ bool hdl_parser_verilog::parse_port_assign(entity& e, instance& inst)
 
 bool hdl_parser_verilog::parse_generic_assign(instance& inst)
 {
+    std::cout << "parsing generic assignment..." << std::endl;
+
     auto generic_str = m_token_stream.extract_until(")");
     m_token_stream.consume(")", true);
 
@@ -553,15 +570,14 @@ std::vector<u32> hdl_parser_verilog::parse_range(token_stream<std::string>& rang
 std::map<std::string, hdl_parser_verilog::signal> hdl_parser_verilog::parse_signal_list()
 {
     std::map<std::string, signal> signals;
-    std::vector<std::vector<u32>> ranges;
+    std::vector<std::vector<u32>> ranges = {{}};
 
     auto signal_str = m_token_stream.extract_until(";");
     m_token_stream.consume(";", true);
 
     // extract bounds
-    while (signal_str.peek() == "[")
+    while (signal_str.consume("["))
     {
-        signal_str.consume("[", true);
         auto range = parse_range(signal_str);
         signal_str.consume("]", true);
 
