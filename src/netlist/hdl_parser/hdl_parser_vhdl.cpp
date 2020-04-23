@@ -865,11 +865,13 @@ std::pair<std::vector<hdl_parser_vhdl::signal>, i32> hdl_parser_vhdl::get_assign
             // (4) NAME(BEGIN_INDEX1 to/downto END_INDEX1, BEGIN_INDEX2 to/downto END_INDEX2, ...)
             if (part_str.consume("("))
             {
+                auto ranges_str = part_str.extract_until(")");
                 do
                 {
-                    ranges.emplace_back(parse_range(part_str));
+                    auto range_str = ranges_str.extract_until(",");
+                    ranges.emplace_back(parse_range(range_str));
 
-                } while (part_str.consume(",", false));
+                } while (ranges_str.consume(",", false));
                 part_str.consume(")", true);
 
                 if (!std::includes(reference_ranges.begin(), reference_ranges.end(), ranges.begin(), ranges.end()))

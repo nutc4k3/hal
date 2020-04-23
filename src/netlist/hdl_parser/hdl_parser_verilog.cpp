@@ -570,7 +570,7 @@ std::vector<u32> hdl_parser_verilog::parse_range(token_stream<std::string>& rang
 std::map<std::string, hdl_parser_verilog::signal> hdl_parser_verilog::parse_signal_list()
 {
     std::map<std::string, signal> signals;
-    std::vector<std::vector<u32>> ranges = {{}};
+    std::vector<std::vector<u32>> ranges;
 
     auto signal_str = m_token_stream.extract_until(";");
     m_token_stream.consume(";", true);
@@ -582,6 +582,11 @@ std::map<std::string, hdl_parser_verilog::signal> hdl_parser_verilog::parse_sign
         signal_str.consume("]", true);
 
         ranges.emplace_back(range);
+    }
+
+    if (ranges.empty())
+    {
+        ranges.push_back({});
     }
 
     // extract names
@@ -680,13 +685,14 @@ std::pair<std::vector<hdl_parser_verilog::signal>, i32> hdl_parser_verilog::get_
                 // (5) NAME[BEGIN_INDEX1:END_INDEX1][BEGIN_INDEX2:END_INDEX2]...
                 do
                 {
-                    ranges.emplace_back(parse_range(part_stream));
-
+                    auto range_str = part_stream.extract_until("]");
+                    ranges.emplace_back(parse_range(range_str));
                     part_stream.consume("]", true);
                 } while (part_stream.consume("[", false));
 
                 if (!std::includes(reference_ranges.begin(), reference_ranges.end(), ranges.begin(), ranges.end()))
                 {
+                    // TODO includes cannot handle nested ranges, need to find other way. Also consider VHDL
                     log_error("hdl_parser", "invalid bounds given for signal or port '{}' in line {}.", signal_name, line_number);
                     return {{}, 0};
                 }
