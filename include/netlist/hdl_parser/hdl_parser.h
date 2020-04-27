@@ -102,7 +102,7 @@ public:
 
                     for (auto& [port_name, assignment] : port_assignments)
                     {
-                        if (!assignment.first._is_bound_known)
+                        if (!assignment.first._is_ranges_known)
                         {
                             if (auto port_it = entity_ports.find(port_name); port_it != entity_ports.end())
                             {
@@ -152,6 +152,10 @@ public:
                         {
                             assignment.first.set_ranges({pin_it->second});
                         }
+                        else
+                        {
+                            assignment.first._is_ranges_known = true;
+                        }
 
                         i32 left_size  = assignment.first.size();
                         i32 right_size = 0;
@@ -163,7 +167,7 @@ public:
                         if (left_size != right_size)
                         {
                             log_error(
-                                "hdl_parser", "port assignment width mismatch: left side has size {} and right side has size {} in line {}.", left_size, right_size, assignment.first._line_number);
+                                "hdl_parser", "port assignment width mismatch: port has width {} and assigned signal has width {} in line {}.", left_size, right_size, assignment.first._line_number);
                             return nullptr;
                         }
                     }
@@ -195,18 +199,29 @@ protected:
         bool _is_binary = false;
 
         // are bounds already known? (should only be unknown for left side of port assignments)
-        bool _is_bound_known = true;
+        bool _is_ranges_known = true;
 
-        signal(u32 line_number, T name, std::vector<std::vector<u32>> ranges, bool is_binary = false, bool is_bound_known = true)
-            : _line_number(line_number), _name(name), _ranges(ranges), _is_binary(is_binary), _is_bound_known(is_bound_known)
+        signal(u32 line_number, T name, std::vector<std::vector<u32>> ranges, bool is_binary = false, bool is_ranges_known = true)
+            : _line_number(line_number), _name(name), _ranges(ranges), _is_binary(is_binary), _is_ranges_known(is_ranges_known)
         {
         }
 
         i32 size() const
         {
-            if (_is_bound_known)
+            if (_is_ranges_known)
             {
-                return _ranges.size();
+                if (_is_binary)
+                {
+                    return _name.size();
+                }
+                else if (_ranges.empty())
+                {
+                    return 1;
+                }
+                else
+                {
+                    return _ranges.size();
+                }
             }
 
             return -1;
@@ -214,8 +229,8 @@ protected:
 
         void set_ranges(std::vector<std::vector<u32>> ranges)
         {
-            _ranges         = ranges;
-            _is_bound_known = true;
+            _ranges          = ranges;
+            _is_ranges_known = true;
         }
 
         bool operator<(const signal& other) const
@@ -293,8 +308,6 @@ protected:
     T m_last_entity;
 
 private:
-    std::string m_file_name;
-
     // stores the netlist
     std::shared_ptr<netlist> m_netlist;
 

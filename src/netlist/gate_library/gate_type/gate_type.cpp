@@ -50,7 +50,6 @@ bool gate_type::do_compare(const gate_type& other) const
 void gate_type::add_input_pin(std::string input_pin)
 {
     m_input_pins.push_back(input_pin);
-    m_input_pin_groups.emplace(input_pin, std::vector<u32>());
 }
 
 void gate_type::add_input_pins(const std::vector<std::string>& input_pins)
@@ -58,7 +57,6 @@ void gate_type::add_input_pins(const std::vector<std::string>& input_pins)
     for (const auto& pin : input_pins)
     {
         m_input_pins.push_back(pin);
-        m_input_pin_groups.emplace(pin, std::vector<u32>());
     }
 }
 
@@ -74,7 +72,6 @@ void gate_type::add_input_pin_group(std::string name, std::vector<u32> range)
 void gate_type::add_output_pin(std::string output_pin)
 {
     m_output_pins.push_back(output_pin);
-    m_output_pin_groups.emplace(output_pin, std::vector<u32>());
 }
 
 void gate_type::add_output_pins(const std::vector<std::string>& output_pins)
@@ -82,7 +79,6 @@ void gate_type::add_output_pins(const std::vector<std::string>& output_pins)
     for (const auto& pin : output_pins)
     {
         m_output_pins.push_back(pin);
-        m_output_pin_groups.emplace(pin, std::vector<u32>());
     }
 }
 

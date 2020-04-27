@@ -30,6 +30,7 @@
 #include "netlist/module.h"
 #include "netlist/net.h"
 
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -81,7 +82,7 @@ private:
     // helper functions
     std::vector<u32> parse_range(token_stream<case_insensitive_string>& range_str);
     std::vector<std::vector<u32>> parse_signal_ranges(token_stream<case_insensitive_string>& signal_str);
-    std::pair<std::vector<signal>, i32> get_assignment_signals(entity& e, token_stream<case_insensitive_string>& signal_str, bool is_left_half, bool is_port_assignment);
+    std::optional<std::pair<std::vector<signal>, i32>> get_assignment_signals(entity& e, token_stream<case_insensitive_string>& signal_str, bool is_left_half, bool is_port_assignment);
     case_insensitive_string get_bin_from_literal(token<case_insensitive_string>& value_token);
     case_insensitive_string get_hex_from_literal(token<case_insensitive_string>& value_token);
 };

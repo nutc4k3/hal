@@ -53,7 +53,7 @@ static bool is_digits(const case_insensitive_string& str)
 
 bool hdl_parser_vhdl::tokenize()
 {
-    std::vector<token<case_insensitive_string>> tmp_tokens;
+    std::vector<token<case_insensitive_string>> parsed_tokens;
     std::string delimiters = ",(): ;=><&";
     case_insensitive_string current_token;
     u32 line_number = 0;
@@ -61,6 +61,7 @@ bool hdl_parser_vhdl::tokenize()
     std::string line;
     bool in_string = false;
     bool escaped   = false;
+
     while (std::getline(m_fs, line))
     {
         line_number++;
@@ -86,42 +87,46 @@ bool hdl_parser_vhdl::tokenize()
             {
                 if (!current_token.empty())
                 {
-                    if (tmp_tokens.size() > 1 && is_digits(tmp_tokens.at(tmp_tokens.size() - 2).string) && tmp_tokens.at(tmp_tokens.size() - 1) == "." && is_digits(current_token))
+                    if (parsed_tokens.size() > 1 && is_digits(parsed_tokens.at(parsed_tokens.size() - 2).string) && parsed_tokens.at(parsed_tokens.size() - 1) == "." && is_digits(current_token))
                     {
-                        tmp_tokens.pop_back();
-                        tmp_tokens.back() += "." + current_token;
+                        parsed_tokens.pop_back();
+                        parsed_tokens.back() += "." + current_token;
                     }
                     else
                     {
-                        tmp_tokens.emplace_back(line_number, current_token);
+                        parsed_tokens.emplace_back(line_number, current_token);
                     }
                     current_token.clear();
                 }
-                if (c == '=' && tmp_tokens.at(tmp_tokens.size() - 1) == "<")
+
+                if (!parsed_tokens.empty())
                 {
-                    tmp_tokens.at(tmp_tokens.size() - 1) = "<=";
+                    if (c == '=' && parsed_tokens.back() == "<")
+                    {
+                        parsed_tokens.back() = "<=";
+                    }
+                    else if (c == '=' && parsed_tokens.back() == ":")
+                    {
+                        parsed_tokens.back() = ":=";
+                    }
+                    else if (c == '>' && parsed_tokens.back() == "=")
+                    {
+                        parsed_tokens.back() = "=>";
+                    }
                 }
-                else if (c == '=' && tmp_tokens.at(tmp_tokens.size() - 1) == ":")
+                if (!std::isspace(c))
                 {
-                    tmp_tokens.at(tmp_tokens.size() - 1) = ":=";
-                }
-                else if (c == '>' && tmp_tokens.at(tmp_tokens.size() - 1) == "=")
-                {
-                    tmp_tokens.at(tmp_tokens.size() - 1) = "=>";
-                }
-                else if (!std::isspace(c))
-                {
-                    tmp_tokens.emplace_back(line_number, case_insensitive_string(1, c));
+                    parsed_tokens.emplace_back(line_number, case_insensitive_string(1, c));
                 }
             }
         }
         if (!current_token.empty())
         {
-            tmp_tokens.emplace_back(line_number, current_token);
+            parsed_tokens.emplace_back(line_number, current_token);
             current_token.clear();
         }
     }
-    m_token_stream = token_stream(tmp_tokens, {"("}, {")"});
+    m_token_stream = token_stream(parsed_tokens, {"("}, {")"});
     return true;
 }
 
@@ -300,55 +305,55 @@ bool hdl_parser_vhdl::parse_attribute(entity& e)
     u32 line_number = m_token_stream.peek().number;
 
     m_token_stream.consume("attribute", true);
-    auto attr_name = m_token_stream.consume().string;
+    auto attribute_name = m_token_stream.consume().string;
 
     if (m_token_stream.peek() == ":")
     {
         m_token_stream.consume(":", true);
-        m_attribute_types[attr_name] = m_token_stream.join_until(";", " ");
+        m_attribute_types[attribute_name] = m_token_stream.join_until(";", " ");
         m_token_stream.consume(";", true);
     }
     else if (m_token_stream.peek() == "of" && m_token_stream.peek(2) == ":")
     {
         m_token_stream.consume("of", true);
-        auto attr_target = m_token_stream.consume();
+        auto attribute_target = m_token_stream.consume();
         m_token_stream.consume(":", true);
-        auto attr_class = m_token_stream.consume();
+        auto attribute_class = m_token_stream.consume();
         m_token_stream.consume("is", true);
-        auto value = m_token_stream.join_until(";", " ").string;
+        auto attribute_value = m_token_stream.join_until(";", " ").string;
         m_token_stream.consume(";", true);
 
-        if (value[0] == '\"' && value.back() == '\"')
+        if (attribute_value[0] == '\"' && attribute_value.back() == '\"')
         {
-            value = value.substr(1, value.size() - 2);
+            attribute_value = attribute_value.substr(1, attribute_value.size() - 2);
         }
 
-        auto type_it = m_attribute_types.find(attr_name);
+        auto type_it = m_attribute_types.find(attribute_name);
         if (type_it == m_attribute_types.end())
         {
-            log_warning("hdl_parser", "attribute {} has unknown base type in line {}.", attr_name, line_number);
-            attribute = std::make_tuple(attr_name, "unknown", value);
+            log_warning("hdl_parser", "attribute {} has unknown base type in line {}.", attribute_name, line_number);
+            attribute = std::make_tuple(attribute_name, "unknown", attribute_value);
         }
         else
         {
-            attribute = std::make_tuple(attr_name, type_it->second, value);
+            attribute = std::make_tuple(attribute_name, type_it->second, attribute_value);
         }
 
-        if (attr_class == "entity")
+        if (attribute_class == "entity")
         {
-            e._entity_attributes[attr_target].insert(attribute);
+            e._entity_attributes[attribute_target].insert(attribute);
         }
-        else if (attr_class == "label")
+        else if (attribute_class == "label")
         {
-            e._instance_attributes[attr_target].insert(attribute);
+            e._instance_attributes[attribute_target].insert(attribute);
         }
-        else if (attr_class == "signal")
+        else if (attribute_class == "signal")
         {
-            e._signal_attributes[attr_target].insert(attribute);
+            e._signal_attributes[attribute_target].insert(attribute);
         }
         else
         {
-            log_error("hdl_parser", "invalid attribute class '{}' in line {}.", attr_class.string, line_number);
+            log_error("hdl_parser", "invalid attribute class '{}' in line {}.", attribute_class.string, line_number);
             return false;
         }
     }
@@ -504,19 +509,19 @@ bool hdl_parser_vhdl::parse_assign(entity& e)
     auto right_parts = get_assignment_signals(e, right_str, false, false);
 
     // verify correctness
-    if (left_parts.second == 0 || right_parts.second == 0)
+    if (!left_parts.has_value() || !right_parts.has_value())
     {
         // error already printed in subfunction
         return false;
     }
 
-    if (left_parts.second != right_parts.second)
+    if (left_parts->second != right_parts->second)
     {
-        log_error("hdl_parser", "assignment width mismatch: left side has size {} and right side has size {} in line {}.", left_parts.second, right_parts.second, line_number);
+        log_error("hdl_parser", "assignment width mismatch: left side has size {} and right side has size {} in line {}.", left_parts->second, right_parts->second, line_number);
         return false;
     }
 
-    e._assignments.emplace(left_parts.first, right_parts.first);
+    e._assignments.emplace(left_parts->first, right_parts->first);
 
     return true;
 }
@@ -609,13 +614,13 @@ bool hdl_parser_vhdl::parse_port_assign(entity& e, instance& inst)
             auto left_parts  = get_assignment_signals(e, left_str, true, true);
             auto right_parts = get_assignment_signals(e, right_str, false, true);
 
-            if (left_parts.second == 0 || right_parts.second == 0)
+            if (!left_parts.has_value() || !right_parts.has_value())
             {
                 // error already printed in subfunction
                 return false;
             }
 
-            inst._port_assignments.emplace(left_parts.first.at(0)._name, std::make_pair(left_parts.first.at(0), right_parts.first));
+            inst._port_assignments.emplace(left_parts->first.at(0)._name, std::make_pair(left_parts->first.at(0), right_parts->first));
         }
     }
 
@@ -775,7 +780,8 @@ std::vector<std::vector<u32>> hdl_parser_vhdl::parse_signal_ranges(token_stream<
     return ranges;
 }
 
-std::pair<std::vector<hdl_parser_vhdl::signal>, i32> hdl_parser_vhdl::get_assignment_signals(entity& e, token_stream<case_insensitive_string>& signal_str, bool is_left_half, bool is_port_assignment)
+std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
+    hdl_parser_vhdl::get_assignment_signals(entity& e, token_stream<case_insensitive_string>& signal_str, bool is_left_half, bool is_port_assignment)
 {
     // PARSE ASSIGNMENT
     //   assignment can currently be one of the following:
@@ -807,7 +813,7 @@ std::pair<std::vector<hdl_parser_vhdl::signal>, i32> hdl_parser_vhdl::get_assign
         if (signal_str.find_next(",") != token_stream<case_insensitive_string>::END_OF_STREAM)
         {
             log_error("hdl_parser", "aggregation is not allowed at this position in line {}.", signal_str.peek().number);
-            return {{}, 0};
+            return std::nullopt;
         }
         parts.push_back(signal_str);
     }
@@ -828,39 +834,21 @@ std::pair<std::vector<hdl_parser_vhdl::signal>, i32> hdl_parser_vhdl::get_assign
             if (is_left_half)
             {
                 log_error("hdl_parser", "numeric value {} not allowed at this position in line {}.", signal_name.string, line_number);
-                return {{}, 0};
+                return std::nullopt;
             }
 
             signal_name = get_bin_from_literal(signal_name_token);
             if (signal_name.string.empty())
             {
                 // error printed in subfunction
-                return {{}, 0};
+                return std::nullopt;
             }
 
-            std::vector<u32> range(signal_name.string.size());
-            std::generate(range.begin(), range.end(), [n = signal_name.string.size()]() mutable { return --n; });
-            ranges    = {range};    // TODO verify range
+            ranges    = {};
             is_binary = true;
         }
         else
         {
-            std::vector<std::vector<u32>> reference_ranges;
-
-            if (auto signal_it = e._signals.find(signal_name); signal_it != e._signals.end())
-            {
-                reference_ranges = signal_it->second._ranges;
-            }
-            else if (auto port_it = e._ports.find(signal_name); port_it != e._ports.end())
-            {
-                reference_ranges = port_it->second.second._ranges;
-            }
-            else
-            {
-                log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}.", signal_name.string, line_number);
-                return {{}, 0};
-            }
-
             // (3) NAME(INDEX1, INDEX2, ...)
             // (4) NAME(BEGIN_INDEX1 to/downto END_INDEX1, BEGIN_INDEX2 to/downto END_INDEX2, ...)
             if (part_str.consume("("))
@@ -873,12 +861,6 @@ std::pair<std::vector<hdl_parser_vhdl::signal>, i32> hdl_parser_vhdl::get_assign
 
                 } while (ranges_str.consume(",", false));
                 part_str.consume(")", true);
-
-                if (!std::includes(reference_ranges.begin(), reference_ranges.end(), ranges.begin(), ranges.end()))
-                {
-                    log_error("hdl_parser", "invalid bounds given for signal or port '{}' in line {}.", signal_name.string, line_number);
-                    return {{}, 0};
-                }
             }
             else
             {
@@ -890,6 +872,22 @@ std::pair<std::vector<hdl_parser_vhdl::signal>, i32> hdl_parser_vhdl::get_assign
                 }
                 else
                 {
+                    std::vector<std::vector<u32>> reference_ranges;
+
+                    if (auto signal_it = e._signals.find(signal_name); signal_it != e._signals.end())
+                    {
+                        reference_ranges = signal_it->second._ranges;
+                    }
+                    else if (auto port_it = e._ports.find(signal_name); port_it != e._ports.end())
+                    {
+                        reference_ranges = port_it->second.second._ranges;
+                    }
+                    else
+                    {
+                        log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}.", signal_name.string, line_number);
+                        return std::nullopt;
+                    }
+
                     ranges = reference_ranges;
                 }
             }

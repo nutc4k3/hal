@@ -54,7 +54,7 @@ namespace hdl_parser_dispatcher
                 if (netlist == nullptr)
                 {
                     log_error("hdl_parser", "parser cannot instantiate file '{}' using gate library '{}'.", file_name.string(), gate_library);
-                    return nullptr;
+                    continue;
                 }
 
                 netlist->set_input_filename(file_name.string());
