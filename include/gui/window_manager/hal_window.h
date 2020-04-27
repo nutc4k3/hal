@@ -3,13 +3,11 @@
 
 #include <QFrame>
 
-class hal_window_layout_container;
+class hal_window_effect_area;
 class hal_window_toolbar;
 class overlay;
-class workspace; // TEMP NAME ?
 
 class QAction;
-class QVBoxLayout;
 
 class hal_window : public QFrame
 {
@@ -32,19 +30,12 @@ public:
 protected:
     //void paintEvent(QPaintEvent* event) Q_DECL_OVERRIDE;
     //bool event(QEvent* event) Q_DECL_OVERRIDE;
-    void closeEvent(QCloseEvent* event) Q_DECL_OVERRIDE;
+    void closeEvent(QCloseEvent* event) override;
 //    void changeEvent(QEvent* event) Q_DECL_OVERRIDE;
-//    void resizeEvent(QResizeEvent* event) Q_DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent* event) override;
 
 private:
-    //void rearrange();
-
-    QVBoxLayout* m_outer_layout;
-    hal_window_layout_container* m_layout_container;
-    QVBoxLayout* m_inner_layout;
-    hal_window_toolbar* m_toolbar;
-    workspace* m_workspace;
-
+    hal_window_effect_area* m_effect_area;
     overlay* m_overlay;
     QGraphicsEffect* m_effect;
 };
