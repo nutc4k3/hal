@@ -29,6 +29,7 @@
 #include "netlist/module.h"
 #include "netlist/net.h"
 
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -61,20 +62,21 @@ private:
     bool parse_tokens();
 
     // parse HDL into intermediate format
-    bool parse_entity();
+    bool parse_entity(std::map<std::string, std::string>& attributes);
     void parse_port_list(std::set<std::string>& port_names);
     bool parse_port_definition(entity& e, const std::set<std::string>& port_names);
-    bool parse_signal_definition(entity& e);
+    bool parse_signal_definition(entity& e, std::map<std::string, std::string>& attributes);
     bool parse_assign(entity& e);
-    bool parse_instance(entity& e);
+    bool parse_attribute(std::map<std::string, std::string>& attributes);
+    bool parse_instance(entity& e, std::map<std::string, std::string>& attributes);
     bool parse_port_assign(entity& e, instance& inst);
     bool parse_generic_assign(instance& inst);
 
     // helper functions
-    void remove_comments(std::string& line, bool& multi_line_comment, bool& multi_line_property);
+    void remove_comments(std::string& line, bool& multi_line_comment);
     std::vector<u32> parse_range(token_stream<std::string>& range_str);
     std::map<std::string, signal> parse_signal_list();
-    std::pair<std::vector<signal>, i32> get_assignment_signals(entity& e, token_stream<std::string>& signal_str, bool allow_numerics);
+    std::optional<std::pair<std::vector<signal>, i32>> get_assignment_signals(entity& e, token_stream<std::string>& signal_str, bool allow_numerics);
     std::string get_bin_from_literal(token<std::string>& value_token);
     std::string get_hex_from_literal(token<std::string>& value_token);
     bool is_in_bounds(const std::vector<std::pair<i32, i32>>& bounds, const std::vector<std::pair<i32, i32>>& reference_bounds) const;
