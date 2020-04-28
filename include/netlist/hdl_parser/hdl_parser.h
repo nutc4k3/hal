@@ -289,6 +289,16 @@ public:
     }
 
 protected:
+    std::string to_std_string(const T& str)
+    {
+        return std::string(str.data());
+    }
+
+    T to_special_string(const std::string& str)
+    {
+        return T(str.data());
+    }
+
     class signal
     {
     public:
@@ -427,12 +437,12 @@ protected:
             return _port_assignments;
         }
 
-        void add_generic_assignment(const T& generic, const T& data_type, const T& assignment)
+        void add_generic_assignment(const std::string& generic, const std::string& data_type, const std::string& assignment)
         {
             _generic_assignments.emplace(generic, std::make_pair(data_type, assignment));
         }
 
-        const std::map<T, std::pair<T, T>>& get_generic_assignments() const
+        const std::map<std::string, std::pair<std::string, std::string>>& get_generic_assignments() const
         {
             return _generic_assignments;
         }
@@ -455,7 +465,7 @@ protected:
         std::map<T, std::pair<signal, std::vector<signal>>> _port_assignments;
 
         // generic assignments: generic_name -> (data_type, data_value)
-        std::map<T, std::pair<T, T>> _generic_assignments;
+        std::map<std::string, std::pair<std::string, std::string>> _generic_assignments;
     };
 
     class entity
@@ -527,12 +537,12 @@ protected:
             return _instances;
         }
 
-        void add_attribute(attribute_target_class target_class, const T& target, const T& name, const T& type, const T& value)
+        void add_attribute(attribute_target_class target_class, const T& target, const std::string& name, const std::string& type, const std::string& value)
         {
             _attributes[target_class][target].emplace(std::make_tuple(name, type, value));
         }
 
-        const std::map<T, std::set<std::tuple<T, T, T>>>& get_attributes(attribute_target_class target_class) const
+        const std::map<T, std::set<std::tuple<std::string, std::string, std::string>>>& get_attributes(attribute_target_class target_class) const
         {
             return _attributes[target_class];
         }
@@ -649,7 +659,7 @@ protected:
         std::map<T, instance> _instances;
 
         // attributes: attribute_target -> set(attribute_name, attribute_type, attribute_value)
-        std::map<attribute_target_class, std::map<T, std::set<std::tuple<T, T, T>>>> _attributes;
+        std::map<attribute_target_class, std::map<T, std::set<std::tuple<std::string, std::string, std::string>>>> _attributes;
 
         bool _initialized = false;
 
@@ -763,7 +773,7 @@ private:
                     return false;
                 }
 
-                if (direction == "input" || direction == "inout")
+                if (direction == "in" || direction == "inout")
                 {
                     if (!new_net->mark_global_input_net())
                     {
@@ -771,7 +781,7 @@ private:
                         return false;
                     }
                 }
-                if (direction == "output" || direction == "inout")
+                if (direction == "out" || direction == "inout")
                 {
                     if (!new_net->mark_global_output_net())
                     {
@@ -852,7 +862,7 @@ private:
                         }
                     }
 
-                    // merge attributes etc.
+                    // merge generics and attributes
                     for (const auto& it : slave_net->get_data())
                     {
                         if (!master_net->set_data(std::get<0>(it.first), std::get<1>(it.first), std::get<0>(it.second), std::get<1>(it.second)))
@@ -914,10 +924,33 @@ private:
 
         module->set_type(to_std_string(e.get_name()));
 
+        // assign entity-level attributes
+        const auto& entity_attributes = e.get_attributes(entity::attribute_target_class::entity);
+        if (const auto& attribute_it = entity_attributes.find(inst_type); attribute_it != entity_attributes.end())
+        {
+            for (const auto& attr : attribute_it->second)
+            {
+                if (!module->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
+                {
+                    log_error("hdl_parser", "couldn't set data");
+                    log_error("hdl_parser",
+                              "cannot set data: key for entity '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                              e.get_name(),
+                              e.get_line_number(),
+                              std::get<0>(attr),
+                              std::get<1>(attr),
+                              std::get<2>(attr));
+                }
+            }
+        }
+
         // create all internal signals
         for (const auto& [signal_name, expanded_signal] : e.get_expanded_signals())
         {
             signal_suffixes[signal_name] = get_unique_signal_suffix(signal_name);
+
+            const auto& signal_attributes = e.get_attributes(entity::attribute_target_class::signal);
+            auto attribute_it             = signal_attributes.find(signal_name);
 
             for (const auto& expanded_name : expanded_signal)
             {
@@ -928,8 +961,29 @@ private:
                     return nullptr;
                 }
                 m_net_by_name[expanded_name + signal_suffixes[expanded_name]] = new_net;
+
+                // assign signal attributes
+                if (attribute_it != signal_attributes.end())
+                {
+                    for (const auto& attr : attribute_it->second)
+                    {
+                        if (!new_net->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
+                        {
+                            log_error("hdl_parser", "couldn't set data");
+                            log_error("hdl_parser",
+                                      "cannot set data: key for signal '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                                      signal_name,
+                                      entity_signals.at(signal_name).get_line_number(),
+                                      std::get<0>(attr),
+                                      std::get<1>(attr),
+                                      std::get<2>(attr));
+                        }
+                    }
+                }
             }
         }
+
+        // TODO deal with attributes assigned to ports
 
         // schedule assigned nets for merging
         for (const auto& [s, assignment] : e.get_expanded_assignments())
@@ -1128,45 +1182,41 @@ private:
             //     }
             // }
 
-            // // process generics
-            // for (auto [name, value] : inst.generics)
-            // {
-            //     auto bit_vector_candidate = core_utils::trim(core_utils::replace(value, "_", ""));
+            // assign instance attributes
+            const auto& instance_attributes = e.get_attributes(entity::attribute_target_class::instance);
+            if (const auto& attribute_it = instance_attributes.find(inst.get_name()); attribute_it != e.instance_attributes.end())
+            {
+                for (const auto& attr : attribute_it->second)
+                {
+                    if (!container->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
+                    {
+                        log_error("hdl_parser",
+                                  "cannot set data: key for instance '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                                  inst.get_name(),
+                                  inst.get_line_number(),
+                                  std::get<0>(attr),
+                                  std::get<1>(attr),
+                                  std::get<2>(attr));
+                    }
+                }
+            }
 
-            //     // determine data type
-            //     auto data_type = std::string();
-
-            //     if (core_utils::is_integer(value))
-            //     {
-            //         data_type = "integer";
-            //     }
-            //     else if (core_utils::is_floating_point(value))
-            //     {
-            //         data_type = "floating_point";
-            //     }
-            //     else if (core_utils::starts_with(value, "\"") && core_utils::ends_with(value, "\""))
-            //     {
-            //         value     = value.substr(1, value.size() - 2);
-            //         data_type = "string";
-            //     }
-            //     else if (value.find('\'') != std::string::npos)
-            //     {
-            //         value     = get_number_from_literal(value, 16);
-            //         data_type = "bit_vector";
-            //     }
-            //     else
-            //     {
-            //         log_error("hdl_parser", "cannot identify data type of generic map value '{}' in instance '{}'", value, inst.name);
-            //         return nullptr;
-            //     }
-
-            //     // store generic information on gate
-            //     if (!container->set_data("generic", name, data_type, value))
-            //     {
-            //         log_error("hdl_parser", "couldn't set data", value, inst.name);
-            //         return nullptr;
-            //     }
-            // }
+            // process generics
+            for (auto [generic_name, generic] : inst.get_generic_assignments())
+            {
+                // store generic information on gate
+                if (!container->set_data("generic", generic_name, generic.first, generic.second))
+                {
+                    log_error("hdl_parser",
+                              "cannot set data: key for instance '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                              inst.get_name(),
+                              inst.get_line_number(),
+                              generic_name,
+                              generic.first,
+                              generic.second);
+                    return nullptr;
+                }
+            }
         }
 
         return module;
@@ -1259,15 +1309,5 @@ private:
             // last dimension
             expanded_signal.push_back(current_signal);
         }
-    }
-
-    std::string to_std_string(const T& str)
-    {
-        return std::string(str.data());
-    }
-
-    T to_special_string(const std::string& str)
-    {
-        return T(str.data());
     }
 };
