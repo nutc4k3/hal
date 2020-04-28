@@ -127,7 +127,8 @@ public:
                             }
                             else
                             {
-                                log_error("hdl_parser", "port '{}' is no valid port of entity '{}' in line {}.", port_name, entity_it->first, assignment.first._line_number);
+                                log_error(
+                                    "hdl_parser", "port '{}' is no valid port for instance '{}' of entity '{}' in line {}.", port_name, inst.first, entity_it->first, assignment.first._line_number);
                                 return nullptr;
                             }
                         }
@@ -150,11 +151,19 @@ public:
                     {
                         if (auto pin_it = pin_groups.find(port_name); pin_it != pin_groups.end())
                         {
-                            assignment.first.set_ranges({pin_it->second});
+                            if (!pin_it->second.empty())
+                            {
+                                assignment.first.set_ranges({pin_it->second});
+                            }
+                            else
+                            {
+                                assignment.first._is_ranges_known = true;
+                            }
                         }
                         else
                         {
-                            assignment.first._is_ranges_known = true;
+                            log_error("hdl_parser", "pin '{}' is no valid pin for gate '{}' of type '{}' in line {}.", port_name, inst.first, gate_it->first, assignment.first._line_number);
+                            return nullptr;
                         }
 
                         i32 left_size  = assignment.first.size();
