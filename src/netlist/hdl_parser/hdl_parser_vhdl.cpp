@@ -187,12 +187,11 @@ bool hdl_parser_vhdl::parse_library()
 
 bool hdl_parser_vhdl::parse_entity()
 {
-    entity e;
-
     m_token_stream.consume("entity", true);
-    e._line_number = m_token_stream.peek().number;
-    e._name        = m_token_stream.consume();
+    u32 line_number                     = m_token_stream.peek().number;
+    case_insensitive_string entity_name = m_token_stream.consume();
     m_token_stream.consume("is", true);
+    entity e(line_number, entity_name);
 
     auto next_token = m_token_stream.peek();
     while (next_token != "end")
@@ -229,16 +228,16 @@ bool hdl_parser_vhdl::parse_entity()
     m_token_stream.consume();
     m_token_stream.consume(";", true);
 
-    if (m_entities.find(e._name) != m_entities.end())
+    if (m_entities.find(entity_name) != m_entities.end())
     {
-        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", e._name, e._line_number, m_entities.at(e._name)._line_number);
+        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", entity_name, line_number, m_entities.at(entity_name).get_line_number());
         return false;
     }
 
-    if (!e._name.empty())
+    if (!entity_name.empty())
     {
-        m_entities[e._name] = e;
-        m_last_entity       = e._name;
+        m_entities.emplace(entity_name, e);
+        m_last_entity = entity_name;
     }
 
     return true;
@@ -289,7 +288,7 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
         for (const auto& name : port_names)
         {
             signal s(line_number, name, ranges);
-            e._ports.emplace(name, std::make_pair(direction, s));
+            e.add_port(direction, s);
         }
     }
 
@@ -301,7 +300,6 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
 
 bool hdl_parser_vhdl::parse_attribute(entity& e)
 {
-    std::tuple<case_insensitive_string, case_insensitive_string, case_insensitive_string> attribute;
     u32 line_number = m_token_stream.peek().number;
 
     m_token_stream.consume("attribute", true);
@@ -315,6 +313,7 @@ bool hdl_parser_vhdl::parse_attribute(entity& e)
     }
     else if (m_token_stream.peek() == "of" && m_token_stream.peek(2) == ":")
     {
+        entity::attribute_target_class target_class;
         m_token_stream.consume("of", true);
         auto attribute_target = m_token_stream.consume();
         m_token_stream.consume(":", true);
@@ -322,6 +321,7 @@ bool hdl_parser_vhdl::parse_attribute(entity& e)
         m_token_stream.consume("is", true);
         auto attribute_value = m_token_stream.join_until(";", " ").string;
         m_token_stream.consume(";", true);
+        case_insensitive_string attribute_type;
 
         if (attribute_value[0] == '\"' && attribute_value.back() == '\"')
         {
@@ -332,30 +332,32 @@ bool hdl_parser_vhdl::parse_attribute(entity& e)
         if (type_it == m_attribute_types.end())
         {
             log_warning("hdl_parser", "attribute {} has unknown base type in line {}.", attribute_name, line_number);
-            attribute = std::make_tuple(attribute_name, "unknown", attribute_value);
+            attribute_type = "unknown";
         }
         else
         {
-            attribute = std::make_tuple(attribute_name, type_it->second, attribute_value);
+            attribute_type = type_it->second;
         }
 
         if (attribute_class == "entity")
         {
-            e._entity_attributes[attribute_target].insert(attribute);
+            target_class = entity::attribute_target_class::entity;
         }
         else if (attribute_class == "label")
         {
-            e._instance_attributes[attribute_target].insert(attribute);
+            target_class = entity::attribute_target_class::instance;
         }
         else if (attribute_class == "signal")
         {
-            e._signal_attributes[attribute_target].insert(attribute);
+            target_class = entity::attribute_target_class::signal;
         }
         else
         {
             log_error("hdl_parser", "invalid attribute class '{}' in line {}.", attribute_class.string, line_number);
             return false;
         }
+
+        e.add_attribute(target_class, attribute_target, attribute_name, attribute_type, attribute_value);
     }
     else
     {
@@ -455,7 +457,8 @@ bool hdl_parser_vhdl::parse_signal_definition(entity& e)
     for (const auto& name : signal_names)
     {
         signal s(line_number, name, ranges);
-        e._signals.emplace(name, s);
+
+        e.add_signal(s);
     }
 
     return true;
@@ -521,44 +524,43 @@ bool hdl_parser_vhdl::parse_assign(entity& e)
         return false;
     }
 
-    e._assignments.emplace(left_parts->first, right_parts->first);
+    e.add_assignment(left_parts->first, right_parts->first);
 
     return true;
 }
 
 bool hdl_parser_vhdl::parse_instance(entity& e)
 {
-    instance inst;
-
-    inst._line_number = m_token_stream.peek().number;
-    inst._name        = m_token_stream.consume();
+    u32 line_number                       = m_token_stream.peek().number;
+    case_insensitive_string instance_name = m_token_stream.consume();
+    case_insensitive_string instance_type;
     m_token_stream.consume(":", true);
 
     // remove prefix from type
     if (m_token_stream.peek() == "entity")
     {
         m_token_stream.consume("entity", true);
-        inst._type = m_token_stream.consume();
-        auto pos   = inst._type.find('.');
+        instance_type = m_token_stream.consume();
+        auto pos      = instance_type.find('.');
         if (pos != std::string::npos)
         {
-            inst._type = inst._type.substr(pos + 1);
+            instance_type = instance_type.substr(pos + 1);
         }
     }
     else if (m_token_stream.peek() == "component")
     {
         m_token_stream.consume("component", true);
-        inst._type = m_token_stream.consume();
+        instance_type = m_token_stream.consume();
     }
     else
     {
-        inst._type = m_token_stream.consume();
+        instance_type = m_token_stream.consume();
         case_insensitive_string prefix;
 
         // find longest matching library prefix
         for (const auto& lib : m_libraries)
         {
-            if (lib.size() > prefix.size() && core_utils::starts_with_t(inst._type, lib))
+            if (lib.size() > prefix.size() && core_utils::starts_with_t(instance_type, lib))
             {
                 prefix = lib;
             }
@@ -567,9 +569,11 @@ bool hdl_parser_vhdl::parse_instance(entity& e)
         // remove prefix
         if (!prefix.empty())
         {
-            inst._type = inst._type.substr(prefix.size());
+            instance_type = instance_type.substr(prefix.size());
         }
     }
+
+    instance inst(line_number, instance_type, instance_name);
 
     if (m_token_stream.consume("generic"))
     {
@@ -589,7 +593,7 @@ bool hdl_parser_vhdl::parse_instance(entity& e)
 
     m_token_stream.consume(";", true);
 
-    e._instances.emplace(inst._name, inst);
+    e.add_instance(inst);
 
     return true;
 }
@@ -620,7 +624,7 @@ bool hdl_parser_vhdl::parse_port_assign(entity& e, instance& inst)
                 return false;
             }
 
-            inst._port_assignments.emplace(left_parts->first.at(0)._name, std::make_pair(left_parts->first.at(0), right_parts->first));
+            inst.add_port_assignment(left_parts->first.at(0), right_parts->first);
         }
     }
 
@@ -688,11 +692,11 @@ bool hdl_parser_vhdl::parse_generic_assign(instance& inst)
         }
         else
         {
-            log_error("hdl_parser", "cannot identify data type of generic map value '{}' in instance '{}' in line {}", rhs.string, inst._name, line_number);
+            log_error("hdl_parser", "cannot identify data type of generic map value '{}' in instance '{}' in line {}", rhs.string, inst.get_name(), line_number);
             return false;
         }
 
-        inst._generic_assignments.emplace(lhs, std::make_pair(data_type, value));
+        inst.add_generic_assignment(lhs, data_type, value);
     }
 
     return true;
@@ -872,30 +876,28 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
                 }
                 else
                 {
-                    std::vector<std::vector<u32>> reference_ranges;
-
-                    if (auto signal_it = e._signals.find(signal_name); signal_it != e._signals.end())
+                    const auto& signals = e.get_signals();
+                    const auto& ports   = e.get_ports();
+                    if (auto signal_it = signals.find(signal_name); signal_it != signals.end())
                     {
-                        reference_ranges = signal_it->second._ranges;
+                        ranges = signal_it->second.get_ranges();
                     }
-                    else if (auto port_it = e._ports.find(signal_name); port_it != e._ports.end())
+                    else if (auto port_it = ports.find(signal_name); port_it != ports.end())
                     {
-                        reference_ranges = port_it->second.second._ranges;
+                        ranges = port_it->second.second.get_ranges();
                     }
                     else
                     {
                         log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}.", signal_name.string, line_number);
                         return std::nullopt;
                     }
-
-                    ranges = reference_ranges;
                 }
             }
         }
 
         // create new signal for assign
         signal s(line_number, signal_name, ranges, is_binary, is_bound_known);
-        size += s.size();
+        size += s.get_size();
         result.push_back(s);
     }
 

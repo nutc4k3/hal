@@ -149,13 +149,13 @@ bool hdl_parser_verilog::parse_tokens()
 
 bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attributes)
 {
-    entity e;
     std::set<std::string> port_names;
     std::map<std::string, std::string> internal_attributes;
 
     m_token_stream.consume("module", true);
-    e._line_number = m_token_stream.peek().number;
-    e._name        = m_token_stream.consume();
+    u32 line_number         = m_token_stream.peek().number;
+    std::string entity_name = m_token_stream.consume();
+    entity e(line_number, entity_name);
 
     // parse port list
     if (m_token_stream.consume("#("))
@@ -213,9 +213,9 @@ bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attrib
     m_token_stream.consume("endmodule", true);
 
     // verify entity name
-    if (m_entities.find(e._name) != m_entities.end())
+    if (m_entities.find(entity_name) != m_entities.end())
     {
-        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", e._name, e._line_number, m_entities.at(e._name)._line_number);
+        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", entity_name, line_number, m_entities.at(entity_name).get_line_number());
         return false;
     }
 
@@ -224,15 +224,15 @@ bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attrib
     {
         for (const auto& [attribute_name, attribute_value] : attributes)
         {
-            e._entity_attributes[e._name].insert(std::make_tuple(attribute_name, "unknown", attribute_value));
+            e.add_attribute(entity::attribute_target_class::entity, entity_name, attribute_name, "unknown", attribute_value);
         }
 
         attributes.clear();
     }
 
     // add to collection of entities
-    m_entities[e._name] = e;
-    m_last_entity       = e._name;
+    m_entities.emplace(entity_name, e);
+    m_last_entity = entity_name;
 
     return true;
 }
@@ -283,7 +283,7 @@ bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::st
             return false;
         }
 
-        e._ports.emplace(port.first, std::make_pair(direction, port.second));
+        e.add_port(direction, port.second);
     }
 
     return true;
@@ -307,7 +307,7 @@ bool hdl_parser_verilog::parse_signal_definition(entity& e, std::map<std::string
         {
             for (const auto& [attribute_name, attribute_value] : attributes)
             {
-                e._signal_attributes[s.first].insert(std::make_tuple(attribute_name, "unknown", attribute_value));
+                e.add_attribute(entity::attribute_target_class::signal, s.first, attribute_name, "unknown", attribute_value);
             }
         }
 
@@ -315,7 +315,8 @@ bool hdl_parser_verilog::parse_signal_definition(entity& e, std::map<std::string
     }
 
     // assign signals to entity
-    e._signals.insert(signals.begin(), signals.end());
+    e.add_signals(signals);
+
     return true;
 }
 
@@ -345,7 +346,7 @@ bool hdl_parser_verilog::parse_assign(entity& e)
         return false;
     }
 
-    e._assignments.emplace(left_parts->first, right_parts->first);
+    e.add_assignment(left_parts->first, right_parts->first);
 
     return true;
 }
@@ -383,9 +384,9 @@ bool hdl_parser_verilog::parse_attribute(std::map<std::string, std::string>& att
 
 bool hdl_parser_verilog::parse_instance(entity& e, std::map<std::string, std::string>& attributes)
 {
-    instance inst;
-    inst._line_number = m_token_stream.peek().number;
-    inst._type        = m_token_stream.consume();
+    u32 line_number           = m_token_stream.peek().number;
+    std::string instance_type = m_token_stream.consume();
+    instance inst(line_number, instance_type);
 
     // parse generics map
     if (m_token_stream.consume("#("))
@@ -397,7 +398,8 @@ bool hdl_parser_verilog::parse_instance(entity& e, std::map<std::string, std::st
     }
 
     // parse instance name
-    inst._name = m_token_stream.consume();
+    std::string instance_name = m_token_stream.consume();
+    inst.set_name(instance_name);
 
     // parse port map
     if (!parse_port_assign(e, inst))
@@ -406,9 +408,10 @@ bool hdl_parser_verilog::parse_instance(entity& e, std::map<std::string, std::st
     }
 
     // verify instance name
-    if (e._instances.find(inst._name) != e._instances.end())
+    const auto& instances = e.get_instances();
+    if (instances.find(instance_name) != instances.end())
     {
-        log_error("hdl_parser", "an instance with the name '{}' does already exist (see line {} and line {}).", inst._name, inst._line_number, e._instances.at(inst._name)._line_number);
+        log_error("hdl_parser", "an instance with the name '{}' does already exist (see line {} and line {}).", instance_name, line_number, instances.at(instance_name).get_line_number());
         return false;
     }
 
@@ -417,14 +420,14 @@ bool hdl_parser_verilog::parse_instance(entity& e, std::map<std::string, std::st
     {
         for (const auto& [attribute_name, attribute_value] : attributes)
         {
-            e._instance_attributes[inst._name].insert(std::make_tuple(attribute_name, "unknown", attribute_value));
+            e.add_attribute(entity::attribute_target_class::instance, instance_name, attribute_name, "unknown", attribute_value);
         }
 
         attributes.clear();
     }
 
     // assign instance to entity
-    e._instances.emplace(inst._name, inst);
+    e.add_instance(inst);
 
     return true;
 }
@@ -457,7 +460,7 @@ bool hdl_parser_verilog::parse_port_assign(entity& e, instance& inst)
                 return false;
             }
 
-            inst._port_assignments.emplace(s._name, std::make_pair(s, right_parts->first));
+            inst.add_port_assignment(s, right_parts->first);
         }
     }
 
@@ -516,11 +519,11 @@ bool hdl_parser_verilog::parse_generic_assign(instance& inst)
         }
         else
         {
-            log_error("hdl_parser", "cannot identify data type of generic map value '{}' in instance '{}' in line {}", rhs.string, inst._name, line_number);
+            log_error("hdl_parser", "cannot identify data type of generic map value '{}' in instance '{}' in line {}", rhs.string, inst.get_name(), line_number);
             return false;
         }
 
-        inst._generic_assignments.emplace(lhs, std::make_pair(data_type, value));
+        inst.add_generic_assignment(lhs, data_type, value);
     }
 
     return true;
@@ -710,13 +713,15 @@ std::optional<std::pair<std::vector<hdl_parser_verilog::signal>, i32>> hdl_parse
         {
             std::vector<std::vector<u32>> reference_ranges;
 
-            if (auto signal_it = e._signals.find(signal_name); signal_it != e._signals.end())
+            const auto& signals = e.get_signals();
+            const auto& ports   = e.get_ports();
+            if (auto signal_it = signals.find(signal_name); signal_it != signals.end())
             {
-                reference_ranges = signal_it->second._ranges;
+                reference_ranges = signal_it->second.get_ranges();
             }
-            else if (auto port_it = e._ports.find(signal_name); port_it != e._ports.end())
+            else if (auto port_it = ports.find(signal_name); port_it != ports.end())
             {
-                reference_ranges = port_it->second.second._ranges;
+                reference_ranges = port_it->second.second.get_ranges();
             }
             else
             {
@@ -746,7 +751,7 @@ std::optional<std::pair<std::vector<hdl_parser_verilog::signal>, i32>> hdl_parse
 
         // create new signal for assign
         signal s(line_number, signal_name, ranges, is_binary);
-        size += s.size();
+        size += s.get_size();
         result.push_back(s);
     }
 
