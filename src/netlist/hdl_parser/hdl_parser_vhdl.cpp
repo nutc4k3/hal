@@ -357,7 +357,7 @@ bool hdl_parser_vhdl::parse_attribute(entity& e)
             return false;
         }
 
-        e.add_attribute(target_class, attribute_target, attribute_name, attribute_type, attribute_value);
+        e.add_attribute(target_class, attribute_target, to_std_string(attribute_name), to_std_string(attribute_type), to_std_string(attribute_value));
     }
     else
     {
@@ -696,7 +696,7 @@ bool hdl_parser_vhdl::parse_generic_assign(instance& inst)
             return false;
         }
 
-        inst.add_generic_assignment(lhs, data_type, value);
+        inst.add_generic_assignment(to_std_string(lhs), to_std_string(data_type), to_std_string(value));
     }
 
     return true;
