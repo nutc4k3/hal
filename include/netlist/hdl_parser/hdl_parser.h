@@ -220,12 +220,12 @@ public:
         }
         m_net_by_name[to_special_string(m_one_net->get_name())] = m_one_net;
 
-        // TODO build the netlist from the intermediate format
+        // build the netlist from the intermediate format
         // the last entity in the file is considered the top module
-        // if (!build_netlist(m_last_entity))
-        // {
-        //     return nullptr;
-        // }
+        if (!build_netlist(m_last_entity))
+        {
+            return nullptr;
+        }
 
         // add global GND gate if required by any instance
         if (!m_zero_net->get_destinations().empty())
@@ -335,6 +335,16 @@ protected:
             compute_size();
         }
 
+        void add_attribute(const std::string& name, const std::string& type, const std::string& value)
+        {
+            _attributes.emplace(std::make_tuple(name, type, value));
+        }
+
+        const std::set<std::tuple<std::string, std::string, std::string>>& get_attributes() const
+        {
+            return _attributes;
+        }
+
         bool is_binary() const
         {
             return _binary;
@@ -363,6 +373,9 @@ protected:
 
         // ranges
         std::vector<std::vector<u32>> _ranges;
+
+        // attributes: set(attribute_name, attribute_type, attribute_value)
+        std::set<std::tuple<std::string, std::string, std::string>> _attributes;
 
         // is binary string?
         bool _binary = false;
@@ -437,6 +450,11 @@ protected:
             return _port_assignments;
         }
 
+        const std::map<T, std::pair<signal, std::vector<signal>>>& get_port_assignments() const
+        {
+            return _port_assignments;
+        }
+
         void add_generic_assignment(const std::string& generic, const std::string& data_type, const std::string& assignment)
         {
             _generic_assignments.emplace(generic, std::make_pair(data_type, assignment));
@@ -445,6 +463,16 @@ protected:
         const std::map<std::string, std::pair<std::string, std::string>>& get_generic_assignments() const
         {
             return _generic_assignments;
+        }
+
+        void add_attribute(const std::string& name, const std::string& type, const std::string& value)
+        {
+            _attributes.emplace(std::make_tuple(name, type, value));
+        }
+
+        const std::set<std::tuple<std::string, std::string, std::string>>& get_attributes() const
+        {
+            return _attributes;
         }
 
         bool operator<(const instance& other) const
@@ -466,17 +494,17 @@ protected:
 
         // generic assignments: generic_name -> (data_type, data_value)
         std::map<std::string, std::pair<std::string, std::string>> _generic_assignments;
+
+        // attributes: set(attribute_name, attribute_type, attribute_value)
+        std::set<std::tuple<std::string, std::string, std::string>> _attributes;
     };
 
     class entity
     {
     public:
-        enum class attribute_target_class
+        entity()
         {
-            entity,
-            instance,
-            signal
-        };
+        }
 
         entity(u32 line_number, T name) : _line_number(line_number), _name(name)
         {
@@ -512,6 +540,11 @@ protected:
             _signals.insert(signals.begin(), signals.end());
         }
 
+        std::map<T, signal>& get_signals()
+        {
+            return _signals;
+        }
+
         const std::map<T, signal>& get_signals() const
         {
             return _signals;
@@ -537,17 +570,22 @@ protected:
             return _instances;
         }
 
-        void add_attribute(attribute_target_class target_class, const T& target, const std::string& name, const std::string& type, const std::string& value)
+        const std::map<T, instance>& get_instances() const
         {
-            _attributes[target_class][target].emplace(std::make_tuple(name, type, value));
+            return _instances;
         }
 
-        const std::map<T, std::set<std::tuple<std::string, std::string, std::string>>>& get_attributes(attribute_target_class target_class) const
+        void add_attribute(const std::string& name, const std::string& type, const std::string& value)
         {
-            return _attributes[target_class];
+            _attributes.emplace(std::make_tuple(name, type, value));
         }
 
-        void initialize()
+        const std::set<std::tuple<std::string, std::string, std::string>>& get_attributes() const
+        {
+            return _attributes;
+        }
+
+        void initialize(hdl_parser<T>* parser)
         {
             if (_initialized)
             {
@@ -558,12 +596,12 @@ protected:
 
             for (const auto& [port_name, p] : _ports)
             {
-                _expanded_ports.emplace(port_name, expand_signal(p.second));
+                _expanded_ports.emplace(port_name, parser->expand_signal(p.second));
             }
 
             for (const auto& [signal_name, s] : _signals)
             {
-                _expanded_signals.emplace(signal_name, expand_signal(s));
+                _expanded_signals.emplace(signal_name, parser->expand_signal(s));
             }
 
             std::vector<T> expanded_signals;
@@ -574,8 +612,8 @@ protected:
                 for (const auto& s : signals)
                 {
                     std::vector<T> expanded;
-                    expanded = expand_signal(s);
-                    expanded_signals.insert(expanded.begin(), expanded.end());
+                    expanded = parser->expand_signal(s);
+                    std::move(expanded.begin(), expanded.end(), std::back_inserter(expanded_signals));
                 }
 
                 for (const auto& s : assignments)
@@ -583,13 +621,13 @@ protected:
                     std::vector<T> expanded;
                     if (s.is_binary())
                     {
-                        expanded = expand_binary_signal(s);
+                        expanded = parser->expand_binary_signal(s);
                     }
                     else
                     {
-                        expanded = expand_signal(s);
+                        expanded = parser->expand_signal(s);
                     }
-                    expanded_assignments.insert(expanded.begin(), expanded.end());
+                    std::move(expanded.begin(), expanded.end(), std::back_inserter(expanded_assignments));
                 }
             }
 
@@ -605,34 +643,19 @@ protected:
             return _initialized;
         }
 
-        const std::map<T, std::vector<T>>& get_expanded_ports()
+        const std::map<T, std::vector<T>>& get_expanded_ports() const
         {
-            if (_initialized)
-            {
-                return _expanded_ports;
-            }
-
-            return {};
+            return _expanded_ports;
         }
 
-        const std::map<T, std::vector<T>>& get_expanded_signals()
+        const std::map<T, std::vector<T>>& get_expanded_signals() const
         {
-            if (_initialized)
-            {
-                return _expanded_signals;
-            }
-
-            return {};
+            return _expanded_signals;
         }
 
-        const std::map<T, T>& get_expanded_assignments()
+        const std::map<T, T>& get_expanded_assignments() const
         {
-            if (_initialized)
-            {
-                return _expanded_assignments;
-            }
-
-            return {};
+            return _expanded_assignments;
         }
 
         bool operator<(const entity& other) const
@@ -658,9 +681,11 @@ protected:
         // instances: instance_name -> instance
         std::map<T, instance> _instances;
 
-        // attributes: attribute_target -> set(attribute_name, attribute_type, attribute_value)
-        std::map<attribute_target_class, std::map<T, std::set<std::tuple<std::string, std::string, std::string>>>> _attributes;
+        // attributes: set(attribute_name, attribute_type, attribute_value)
+        std::set<std::tuple<std::string, std::string, std::string>> _attributes;
 
+        // TODO check this for instantiation of netlist
+        // is already initialized?
         bool _initialized = false;
 
         // expanded ports: port_name -> expanded_ports
@@ -699,10 +724,10 @@ private:
 
     bool build_netlist(const T& top_module)
     {
-        m_netlist->set_design_name(top_module);
+        m_netlist->set_design_name(to_std_string(top_module));
         auto& top_entity = m_entities[top_module];
 
-        std::map<std::string, u32> instantiation_count;
+        std::map<T, u32> instantiation_count;
 
         // preparations for alias: count the occurences of all names
         std::queue<entity*> q;
@@ -740,11 +765,9 @@ private:
             }
         }
 
-        // instantiate all entities
+        // detect unused entities
         for (auto& e : m_entities)
         {
-            e.instantiate();
-
             if (instantiation_count[e.first] == 0)
             {
                 log_warning("hdl_parser", "entity '{}' defined but not used", e.first);
@@ -792,10 +815,10 @@ private:
             }
         }
 
-        instance top_instance(top_entity.get_line_number(), top_entity.name(), "top_module");
+        instance top_instance(top_entity.get_line_number(), top_entity.get_name(), "top_module");
         if (instantiate(top_instance, nullptr, top_assignments) == nullptr)
         {
-            log_error("hdl_parser", "could not instantiate module '{}'.", top_entity._name);
+            log_error("hdl_parser", "could not instantiate module '{}'.", top_entity.get_name());
             return false;
         }
 
@@ -892,29 +915,29 @@ private:
         return true;
     }
 
+    // TODO: expand signals while parsing not while instantiating to save time
     std::shared_ptr<module> instantiate(const instance& entity_inst, std::shared_ptr<module> parent, std::unordered_map<T, T> parent_module_assignments)
     {
         std::map<T, T> signal_suffixes;
         std::map<T, T> instance_suffixes;
 
-        auto inst_name             = entity_inst.get_name();
-        auto inst_type             = entity_inst.get_type();
-        const auto& e              = m_entities.at(inst_type);
+        auto entity_inst_name      = entity_inst.get_name();
+        auto entity_inst_type      = entity_inst.get_type();
+        const auto& e              = m_entities.at(entity_inst_type);
         const auto& entity_signals = e.get_signals();
-        const auto& entity_ports   = e.get_ports();
 
-        instance_suffixes[inst_name] = get_unique_instance_suffix(inst_name);
+        instance_suffixes[entity_inst_name] = get_unique_instance_suffix(entity_inst_name);
 
         std::shared_ptr<module> module;
 
         if (parent == nullptr)
         {
             module = m_netlist->get_top_module();
-            module->set_name(to_std_string(inst_name + instance_suffixes[inst_name]));
+            module->set_name(to_std_string(entity_inst_name + instance_suffixes[entity_inst_name]));
         }
         else
         {
-            module = m_netlist->create_module(to_std_string(inst_name + instance_suffixes[inst_name]), parent);
+            module = m_netlist->create_module(to_std_string(entity_inst_name + instance_suffixes[entity_inst_name]), parent);
         }
 
         if (module == nullptr)
@@ -925,22 +948,19 @@ private:
         module->set_type(to_std_string(e.get_name()));
 
         // assign entity-level attributes
-        const auto& entity_attributes = e.get_attributes(entity::attribute_target_class::entity);
-        if (const auto& attribute_it = entity_attributes.find(inst_type); attribute_it != entity_attributes.end())
+
+        for (const auto& attr : e.get_attributes())
         {
-            for (const auto& attr : attribute_it->second)
+            if (!module->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
             {
-                if (!module->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
-                {
-                    log_error("hdl_parser", "couldn't set data");
-                    log_error("hdl_parser",
-                              "cannot set data: key for entity '{}' in line {}: {}, value_data_type: {}, value: {}.",
-                              e.get_name(),
-                              e.get_line_number(),
-                              std::get<0>(attr),
-                              std::get<1>(attr),
-                              std::get<2>(attr));
-                }
+                log_error("hdl_parser", "couldn't set data");
+                log_error("hdl_parser",
+                          "cannot set data: key for entity '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                          e.get_name(),
+                          e.get_line_number(),
+                          std::get<0>(attr),
+                          std::get<1>(attr),
+                          std::get<2>(attr));
             }
         }
 
@@ -948,9 +968,6 @@ private:
         for (const auto& [signal_name, expanded_signal] : e.get_expanded_signals())
         {
             signal_suffixes[signal_name] = get_unique_signal_suffix(signal_name);
-
-            const auto& signal_attributes = e.get_attributes(entity::attribute_target_class::signal);
-            auto attribute_it             = signal_attributes.find(signal_name);
 
             for (const auto& expanded_name : expanded_signal)
             {
@@ -963,21 +980,18 @@ private:
                 m_net_by_name[expanded_name + signal_suffixes[expanded_name]] = new_net;
 
                 // assign signal attributes
-                if (attribute_it != signal_attributes.end())
+                for (const auto& attr : entity_signals.at(signal_name).get_attributes())
                 {
-                    for (const auto& attr : attribute_it->second)
+                    if (!new_net->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
                     {
-                        if (!new_net->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
-                        {
-                            log_error("hdl_parser", "couldn't set data");
-                            log_error("hdl_parser",
-                                      "cannot set data: key for signal '{}' in line {}: {}, value_data_type: {}, value: {}.",
-                                      signal_name,
-                                      entity_signals.at(signal_name).get_line_number(),
-                                      std::get<0>(attr),
-                                      std::get<1>(attr),
-                                      std::get<2>(attr));
-                        }
+                        log_error("hdl_parser", "couldn't set data");
+                        log_error("hdl_parser",
+                                  "cannot set data: key for signal '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                                  signal_name,
+                                  entity_signals.at(signal_name).get_line_number(),
+                                  std::get<0>(attr),
+                                  std::get<1>(attr),
+                                  std::get<2>(attr));
                     }
                 }
             }
@@ -1018,7 +1032,7 @@ private:
         auto gate_types     = m_netlist->get_gate_library()->get_gate_types();
 
         // process instances i.e. gates or other entities
-        for (const auto& inst : e.get_instances())
+        for (const auto& [inst_name, inst] : e.get_instances())
         {
             // will later hold either module or gate, so attributes can be assigned properly
             data_container* container;
@@ -1031,14 +1045,12 @@ private:
             std::vector<T> expanded_ports;
             std::vector<T> expanded_assignments;
 
-            for (const auto& [ports, assignments] : inst.get_port_assignments())
+            for (const auto& port_assignments : inst.get_port_assignments())
             {
-                for (const auto& p : ports)
-                {
-                    std::vector<T> expanded;
-                    expanded = expand_signal(p);
-                    expanded_ports.insert(expanded.begin(), expanded.end());
-                }
+                const auto& port        = port_assignments.second.first;
+                const auto& assignments = port_assignments.second.second;
+
+                expanded_ports = expand_signal(port);
 
                 for (const auto& s : assignments)
                 {
@@ -1051,7 +1063,7 @@ private:
                     {
                         expanded = expand_signal(s);
                     }
-                    expanded_assignments.insert(expanded.begin(), expanded.end());
+                    std::move(expanded.begin(), expanded.end(), std::back_inserter(expanded_assignments));
                 }
             }
 
@@ -1077,7 +1089,7 @@ private:
                     }
                     else
                     {
-                        log_error("hdl_parser", "signal assignment \"{} = {}\" of instance {} is invalid", expanded_port, expanded_assignment, inst.get_name());
+                        log_error("hdl_parser", "signal assignment \"{} = {}\" of instance {} is invalid", expanded_port, expanded_assignment, inst_name);
                         return nullptr;
                     }
                 }
@@ -1183,21 +1195,17 @@ private:
             // }
 
             // assign instance attributes
-            const auto& instance_attributes = e.get_attributes(entity::attribute_target_class::instance);
-            if (const auto& attribute_it = instance_attributes.find(inst.get_name()); attribute_it != e.instance_attributes.end())
+            for (const auto& attr : inst.get_attributes())
             {
-                for (const auto& attr : attribute_it->second)
+                if (!container->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
                 {
-                    if (!container->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
-                    {
-                        log_error("hdl_parser",
-                                  "cannot set data: key for instance '{}' in line {}: {}, value_data_type: {}, value: {}.",
-                                  inst.get_name(),
-                                  inst.get_line_number(),
-                                  std::get<0>(attr),
-                                  std::get<1>(attr),
-                                  std::get<2>(attr));
-                    }
+                    log_error("hdl_parser",
+                              "cannot set data: key for instance '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                              inst_name,
+                              inst.get_line_number(),
+                              std::get<0>(attr),
+                              std::get<1>(attr),
+                              std::get<2>(attr));
                 }
             }
 
@@ -1209,7 +1217,7 @@ private:
                 {
                     log_error("hdl_parser",
                               "cannot set data: key for instance '{}' in line {}: {}, value_data_type: {}, value: {}.",
-                              inst.get_name(),
+                              inst_name,
                               inst.get_line_number(),
                               generic_name,
                               generic.first,
@@ -1233,7 +1241,7 @@ private:
         m_current_signal_index[name]++;
 
         // otherwise, add a unique string to the name
-        return "(" + std::to_string(m_current_signal_index[name]) + ")";
+        return to_special_string("(" + std::to_string(m_current_signal_index[name]) + ")");
     }
 
     T get_unique_instance_suffix(const T& name)
@@ -1247,7 +1255,7 @@ private:
         m_current_instance_index[name]++;
 
         // otherwise, add a unique string to the name
-        return "(" + std::to_string(m_current_instance_index[name]) + ")";
+        return to_special_string("(" + std::to_string(m_current_instance_index[name]) + ")");
     }
 
     std::vector<T> expand_signal_vector(const std::vector<signal>& signals, bool allow_binary)
@@ -1301,7 +1309,7 @@ private:
         {
             for (const auto& index : ranges[dimension])
             {
-                this->expand_signal_recursively(expanded_signal, current_signal + "(" + std::to_string(index) + ")", ranges, dimension + 1);
+                this->expand_signal_recursively(expanded_signal, current_signal + "(" + to_special_string(std::to_string(index).data()) + ")", ranges, dimension + 1);
             }
         }
         else
