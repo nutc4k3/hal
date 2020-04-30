@@ -43,3 +43,16 @@ struct case_insensitive_char_traits : public std::char_traits<char>
     }
 };
 using case_insensitive_string = std::basic_string<char, case_insensitive_char_traits>;
+
+namespace std
+{
+    template<>
+    struct hash<case_insensitive_string>
+    {
+        std::size_t operator()(const case_insensitive_string& str) const
+        {
+            return std::hash<std::string>{}(std::string(str.data()));
+        }
+    };
+
+}    // namespace std
