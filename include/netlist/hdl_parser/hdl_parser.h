@@ -697,7 +697,6 @@ protected:
         // attributes: set(attribute_name, attribute_type, attribute_value)
         std::set<std::tuple<std::string, std::string, std::string>> _attributes;
 
-        // TODO check this befor instantiation of netlist
         // is already initialized?
         bool _initialized = false;
 
@@ -938,7 +937,6 @@ private:
         return true;
     }
 
-    // TODO: expand signals while parsing not while instantiating to save time
     std::shared_ptr<module> instantiate(const instance& entity_inst, std::shared_ptr<module> parent, std::unordered_map<T, T> parent_module_assignments)
     {
         std::map<T, T> signal_alias;
@@ -1020,8 +1018,6 @@ private:
                 }
             }
         }
-
-        // TODO deal with attributes assigned to ports
 
         // schedule assigned nets for merging
         for (const auto& [s, assignment] : e.get_expanded_assignments())
