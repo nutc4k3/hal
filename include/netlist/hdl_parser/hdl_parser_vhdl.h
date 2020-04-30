@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "core/case_insensitive_string.h"
 #include "core/token_stream.h"
 #include "def.h"
 #include "hdl_parser.h"
@@ -38,7 +37,7 @@
 /**
  * @ingroup hdl_parsers
  */
-class HDL_PARSER_API hdl_parser_vhdl : public hdl_parser<case_insensitive_string>
+class HDL_PARSER_API hdl_parser_vhdl : public hdl_parser<core_strings::case_insensitive_string>
 {
 public:
     /**
@@ -64,13 +63,13 @@ private:
         signal
     };
 
-    using attribute_buffer_t = std::map<attribute_target_class, std::map<case_insensitive_string, std::tuple<u32, std::string, std::string, std::string>>>;
+    using attribute_buffer_t = std::map<attribute_target_class, std::map<core_strings::case_insensitive_string, std::tuple<u32, std::string, std::string, std::string>>>;
     attribute_buffer_t attribute_buffer;
 
-    std::set<case_insensitive_string> m_libraries;
-    std::map<case_insensitive_string, case_insensitive_string> m_attribute_types;
+    std::set<core_strings::case_insensitive_string> m_libraries;
+    std::map<core_strings::case_insensitive_string, core_strings::case_insensitive_string> m_attribute_types;
 
-    token_stream<case_insensitive_string> m_token_stream;
+    token_stream<core_strings::case_insensitive_string> m_token_stream;
 
     bool tokenize();
     bool parse_tokens();
@@ -91,9 +90,9 @@ private:
     bool assign_attributes(entity& e);
 
     // helper functions
-    std::vector<u32> parse_range(token_stream<case_insensitive_string>& range_str);
-    std::vector<std::vector<u32>> parse_signal_ranges(token_stream<case_insensitive_string>& signal_str);
-    std::optional<std::pair<std::vector<signal>, i32>> get_assignment_signals(entity& e, token_stream<case_insensitive_string>& signal_str, bool is_left_half, bool is_port_assignment);
-    case_insensitive_string get_bin_from_literal(token<case_insensitive_string>& value_token);
-    case_insensitive_string get_hex_from_literal(token<case_insensitive_string>& value_token);
+    std::vector<u32> parse_range(token_stream<core_strings::case_insensitive_string>& range_str);
+    std::vector<std::vector<u32>> parse_signal_ranges(token_stream<core_strings::case_insensitive_string>& signal_str);
+    std::optional<std::pair<std::vector<signal>, i32>> get_assignment_signals(entity& e, token_stream<core_strings::case_insensitive_string>& signal_str, bool is_left_half, bool is_port_assignment);
+    core_strings::case_insensitive_string get_bin_from_literal(token<core_strings::case_insensitive_string>& value_token);
+    core_strings::case_insensitive_string get_hex_from_literal(token<core_strings::case_insensitive_string>& value_token);
 };

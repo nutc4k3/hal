@@ -608,12 +608,12 @@ std::vector<u32> hdl_parser_verilog::parse_range(token_stream<std::string>& rang
 {
     if (range_str.remaining() == 1)
     {
-        return {(u32)std::stoi(std::string(range_str.consume().string.data()))};
+        return {(u32)std::stoi(range_str.consume().string)};
     }
 
-    int start = std::stoi(std::string(range_str.consume().string.data()));
+    int start = std::stoi(range_str.consume().string);
     range_str.consume(":", true);
-    int end = std::stoi(std::string(range_str.consume().string.data()));
+    int end = std::stoi(range_str.consume().string);
 
     int direction = (start <= end) ? 1 : -1;
 
