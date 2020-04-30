@@ -24,7 +24,9 @@
 #pragma once
 
 #include "core/log.h"
+#include "core/special_strings.h"
 #include "def.h"
+#include "netlist/gate.h"
 #include "netlist/gate_library/gate_type/gate_type.h"
 #include "netlist/module.h"
 #include "netlist/net.h"
@@ -40,7 +42,13 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+// TODO module ports
+// TODO port attributes
+// TODO multi-bit pins for gates
+// TODO module types
 
 /* forward declaration*/
 class netlist;
@@ -63,7 +71,6 @@ public:
     virtual ~hdl_parser() = default;
 
     /**
-     * TODO 
      * Parses hdl code for a specific netlist library.
      *
      * @param[in] gate_library - The gate library name.
@@ -71,7 +78,6 @@ public:
      */
     virtual bool parse() = 0;
 
-    // TODO
     std::shared_ptr<netlist> instantiate(const std::string& gate_library)
     {
         // create empty netlist
@@ -90,10 +96,16 @@ public:
         }
 
         // retrieve available gate types
-        std::map<T, std::shared_ptr<const gate_type>> gate_types;
-        for (const auto& gt : m_netlist->get_gate_library()->get_gate_types())
+        if constexpr (std::is_same<T, std::string>::value)
         {
-            gate_types.emplace(to_special_string(gt.first), gt.second);
+            m_tmp_gate_types = m_netlist->get_gate_library()->get_gate_types();
+        }
+        else
+        {
+            for (const auto& gt : m_netlist->get_gate_library()->get_gate_types())
+            {
+                m_tmp_gate_types.emplace(core_strings::from_std_string<T>(gt.first), gt.second);
+            }
         }
 
         // match each entity's instances to entities and gate types
@@ -148,16 +160,27 @@ public:
                     }
                 }
                 // instance of gate type
-                else if (auto gate_it = gate_types.find(inst.get_type()); gate_it != gate_types.end())
+                else if (auto gate_it = m_tmp_gate_types.find(inst.get_type()); gate_it != m_tmp_gate_types.end())
                 {
                     std::map<T, std::vector<u32>> pin_groups;
-                    for (const auto& pin_group : gate_it->second->get_input_pin_groups())
+                    if constexpr (std::is_same<T, std::string>::value)
                     {
-                        pin_groups.emplace(to_special_string(pin_group.first), pin_group.second);
+                        pin_groups = gate_it->second->get_input_pin_groups();
+                        for (const auto& pin_group : gate_it->second->get_output_pin_groups())
+                        {
+                            pin_groups.emplace(pin_group);
+                        }
                     }
-                    for (const auto& pin_group : gate_it->second->get_output_pin_groups())
+                    else
                     {
-                        pin_groups.emplace(to_special_string(pin_group.first), pin_group.second);
+                        for (const auto& pin_group : gate_it->second->get_input_pin_groups())
+                        {
+                            pin_groups.emplace(core_strings::from_std_string<T>(pin_group.first), pin_group.second);
+                        }
+                        for (const auto& pin_group : gate_it->second->get_output_pin_groups())
+                        {
+                            pin_groups.emplace(core_strings::from_std_string<T>(pin_group.first), pin_group.second);
+                        }
                     }
 
                     for (auto& [port_name, assignment] : port_assignments)
@@ -211,14 +234,14 @@ public:
         {
             return nullptr;
         }
-        m_net_by_name[to_special_string(m_zero_net->get_name())] = m_zero_net;
+        m_net_by_name[core_strings::from_std_string<T>(m_zero_net->get_name())] = m_zero_net;
 
         m_one_net = m_netlist->create_net("'1'");
         if (m_one_net == nullptr)
         {
             return nullptr;
         }
-        m_net_by_name[to_special_string(m_one_net->get_name())] = m_one_net;
+        m_net_by_name[core_strings::from_std_string<T>(m_one_net->get_name())] = m_one_net;
 
         // build the netlist from the intermediate format
         // the last entity in the file is considered the top module
@@ -289,16 +312,6 @@ public:
     }
 
 protected:
-    std::string to_std_string(const T& str)
-    {
-        return std::string(str.data());
-    }
-
-    T to_special_string(const std::string& str)
-    {
-        return T(str.data());
-    }
-
     class signal
     {
     public:
@@ -684,7 +697,7 @@ protected:
         // attributes: set(attribute_name, attribute_type, attribute_value)
         std::set<std::tuple<std::string, std::string, std::string>> _attributes;
 
-        // TODO check this for instantiation of netlist
+        // TODO check this befor instantiation of netlist
         // is already initialized?
         bool _initialized = false;
 
@@ -720,11 +733,14 @@ private:
     std::map<T, std::shared_ptr<net>> m_net_by_name;
     std::map<T, std::vector<T>> m_nets_to_merge;
 
+    std::map<T, std::shared_ptr<const gate_type>> m_tmp_gate_types;
+
     std::map<T, std::function<bool(net&)>> mark_global_net_function_map = {{"in", &net::mark_global_input_net}, {"out", &net::mark_global_output_net}};
 
     bool build_netlist(const T& top_module)
     {
-        m_netlist->set_design_name(to_std_string(top_module));
+        m_netlist->set_design_name(core_strings::to_std_string<T>(top_module));
+
         auto& top_entity = m_entities[top_module];
 
         std::map<T, u32> instantiation_count;
@@ -768,9 +784,15 @@ private:
         // detect unused entities
         for (auto& e : m_entities)
         {
+            if (!e.second.is_initialized())
+            {
+                log_warning("hdl_parser", "entity '{}' has not been initialized during parsing, this may affect performance.", e.first);
+                e.second.initialize(this);
+            }
+
             if (instantiation_count[e.first] == 0)
             {
-                log_warning("hdl_parser", "entity '{}' defined but not used", e.first);
+                log_warning("hdl_parser", "entity '{}' defined but not used.", e.first);
             }
         }
 
@@ -784,7 +806,8 @@ private:
 
             for (const auto& expanded_name : expanded_ports.at(port_name))
             {
-                auto new_net                 = m_netlist->create_net(to_std_string(expanded_name));
+                std::shared_ptr<net> new_net;
+                new_net                      = m_netlist->create_net(core_strings::to_std_string<T>(expanded_name));
                 m_net_by_name[expanded_name] = new_net;
 
                 // for instances, point the ports to the newly generated signals
@@ -918,26 +941,26 @@ private:
     // TODO: expand signals while parsing not while instantiating to save time
     std::shared_ptr<module> instantiate(const instance& entity_inst, std::shared_ptr<module> parent, std::unordered_map<T, T> parent_module_assignments)
     {
-        std::map<T, T> signal_suffixes;
-        std::map<T, T> instance_suffixes;
+        std::map<T, T> signal_alias;
+        std::map<T, T> instance_alias;
 
-        auto entity_inst_name      = entity_inst.get_name();
-        auto entity_inst_type      = entity_inst.get_type();
+        const T& entity_inst_name  = entity_inst.get_name();
+        const T& entity_inst_type  = entity_inst.get_type();
         const auto& e              = m_entities.at(entity_inst_type);
         const auto& entity_signals = e.get_signals();
 
-        instance_suffixes[entity_inst_name] = get_unique_instance_suffix(entity_inst_name);
+        instance_alias[entity_inst_name] = get_unique_alias(m_instance_name_occurrences, entity_inst_name);
 
         std::shared_ptr<module> module;
 
         if (parent == nullptr)
         {
             module = m_netlist->get_top_module();
-            module->set_name(to_std_string(entity_inst_name + instance_suffixes[entity_inst_name]));
+            module->set_name(core_strings::to_std_string<T>(instance_alias.at(entity_inst_name)));
         }
         else
         {
-            module = m_netlist->create_module(to_std_string(entity_inst_name + instance_suffixes[entity_inst_name]), parent);
+            module = m_netlist->create_module(core_strings::to_std_string<T>(instance_alias.at(entity_inst_name)), parent);
         }
 
         if (module == nullptr)
@@ -945,10 +968,9 @@ private:
             return nullptr;
         }
 
-        module->set_type(to_std_string(e.get_name()));
+        module->set_type(core_strings::to_std_string<T>(e.get_name()));
 
         // assign entity-level attributes
-
         for (const auto& attr : e.get_attributes())
         {
             if (!module->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
@@ -967,17 +989,19 @@ private:
         // create all internal signals
         for (const auto& [signal_name, expanded_signal] : e.get_expanded_signals())
         {
-            signal_suffixes[signal_name] = get_unique_signal_suffix(signal_name);
-
             for (const auto& expanded_name : expanded_signal)
             {
+                signal_alias[expanded_name] = get_unique_alias(m_signal_name_occurrences, expanded_name);
+
                 // create new net for the signal
-                auto new_net = m_netlist->create_net(to_std_string(expanded_name + signal_suffixes[expanded_name]));
+                auto new_net = m_netlist->create_net(core_strings::to_std_string<T>(signal_alias.at(expanded_name)));
+
                 if (new_net == nullptr)
                 {
                     return nullptr;
                 }
-                m_net_by_name[expanded_name + signal_suffixes[expanded_name]] = new_net;
+
+                m_net_by_name[signal_alias.at(expanded_name)] = new_net;
 
                 // assign signal attributes
                 for (const auto& attr : entity_signals.at(signal_name).get_attributes())
@@ -1011,7 +1035,7 @@ private:
             }
             else
             {
-                a = a + signal_suffixes.at(a);
+                a = signal_alias.at(a);
             }
 
             if (auto it = parent_module_assignments.find(b); it != parent_module_assignments.end())
@@ -1020,20 +1044,17 @@ private:
             }
             else if (b != "'0'" && b != "'1'")
             {
-                b = b + signal_suffixes.at(b);
+                b = signal_alias.at(b);
             }
 
             m_nets_to_merge[b].push_back(a);
         }
 
-        // cache global vcc/gnd types
-        auto vcc_gate_types = m_netlist->get_gate_library()->get_vcc_gate_types();
-        auto gnd_gate_types = m_netlist->get_gate_library()->get_gnd_gate_types();
-        auto gate_types     = m_netlist->get_gate_library()->get_gate_types();
-
         // process instances i.e. gates or other entities
         for (const auto& [inst_name, inst] : e.get_instances())
         {
+            const auto& inst_type = inst.get_type();
+
             // will later hold either module or gate, so attributes can be assigned properly
             data_container* container;
 
@@ -1079,9 +1100,9 @@ private:
                 }
                 else
                 {
-                    if (auto suffix_it = signal_suffixes.find(expanded_assignment); suffix_it != signal_suffixes.end())
+                    if (auto alias_it = signal_alias.find(expanded_assignment); alias_it != signal_alias.end())
                     {
-                        instance_assignments[expanded_port] = expanded_assignment + suffix_it->second;
+                        instance_assignments[expanded_port] = alias_it->second;
                     }
                     else if (expanded_assignment == "'0'" || expanded_assignment == "'1'")
                     {
@@ -1096,7 +1117,7 @@ private:
             }
 
             // if the instance is another entity, recursively instantiate it
-            if (m_entities.find(inst.get_type()) != m_entities.end())
+            if (m_entities.find(inst_type) != m_entities.end())
             {
                 container = instantiate(inst, module, instance_assignments).get();
                 if (container == nullptr)
@@ -1104,95 +1125,98 @@ private:
                     return nullptr;
                 }
             }
+            // otherwise it has to be an element from the gate library
+            else
+            {
+                // create the new gate
+                instance_alias[inst_name] = get_unique_alias(m_instance_name_occurrences, inst_name);
 
-            // TODO finish this
-            // // otherwise it has to be an element from the gate library
-            // else
-            // {
-            //     // create the new gate
-            //     aliases[inst.name] = get_unique_alias(inst.name);
+                std::shared_ptr<gate> new_gate;
 
-            //     std::shared_ptr<gate> new_gate;
+                if (auto gate_type_it = m_tmp_gate_types.find(inst_type); gate_type_it == m_tmp_gate_types.end())
+                {
+                    log_error("hdl_parser", "no gate type '{}' in gate library '{}'.", inst_type, m_netlist->get_gate_library()->get_name());
+                    return nullptr;
+                }
+                else
+                {
+                    new_gate = m_netlist->create_gate(gate_type_it->second, core_strings::to_std_string<T>(instance_alias.at(inst_name)));
+                }
 
-            //     if (auto gate_type_it = gate_types.find(inst.type); gate_type_it == gate_types.end())
-            //     {
-            //         log_error("hdl_parser", "could not find gate type '{}' in gate library '{}'", inst.type, m_netlist->get_gate_library()->get_name());
-            //         return nullptr;
-            //     }
-            //     else
-            //     {
-            //         new_gate = m_netlist->create_gate(gate_type_it->second, aliases[inst.name]);
-            //     }
+                if (new_gate == nullptr)
+                {
+                    return nullptr;
+                }
 
-            //     if (new_gate == nullptr)
-            //     {
-            //         return nullptr;
-            //     }
+                module->assign_gate(new_gate);
+                container = new_gate.get();
 
-            //     module->assign_gate(new_gate);
-            //     container = new_gate.get();
+                // cache pin types
+                std::vector<T> input_pins;
+                std::vector<T> output_pins;
+                if constexpr (std::is_same<T, std::string>::value)
+                {
+                    input_pins  = new_gate->get_input_pins();
+                    output_pins = new_gate->get_output_pins();
+                }
+                else
+                {
+                    for (const auto& pin : new_gate->get_input_pins())
+                    {
+                        input_pins.push_back(core_strings::from_std_string<T>(pin));
+                    }
 
-            //     // if gate is a global type, register it as such
-            //     if (vcc_gate_types.find(inst.type) != vcc_gate_types.end() && !new_gate->mark_vcc_gate())
-            //     {
-            //         return nullptr;
-            //     }
-            //     if (gnd_gate_types.find(inst.type) != gnd_gate_types.end() && !new_gate->mark_gnd_gate())
-            //     {
-            //         return nullptr;
-            //     }
+                    for (const auto& pin : new_gate->get_output_pins())
+                    {
+                        output_pins.push_back(core_strings::from_std_string<T>(pin));
+                    }
+                }
 
-            //     // cache pin types
-            //     auto input_pins  = new_gate->get_input_pins();
-            //     auto output_pins = new_gate->get_output_pins();
+                // check for port
+                for (auto [expanded_port, expanded_assignment] : expanded_port_assignments)
+                {
+                    // apply port assignments
+                    if (auto instance_it = instance_assignments.find(expanded_port); instance_it != instance_assignments.end())
+                    {
+                        expanded_assignment = instance_it->second;
+                    }
+                    else if (auto alias_it = signal_alias.find(expanded_assignment); alias_it != signal_alias.end())
+                    {
+                        expanded_assignment = alias_it->second;
+                    }
 
-            //     // check for port
-            //     for (auto [pin, net_name] : inst.ports)
-            //     {
-            //         // apply port assignments
-            //         if (auto instance_it = instance_assignments.find(pin); instance_it != instance_assignments.end())
-            //         {
-            //             net_name = instance_it->second;
-            //         }
+                    // get the respective net for the assignment
+                    if (const auto& net_it = m_net_by_name.find(expanded_assignment); net_it == m_net_by_name.end())
+                    {
+                        log_error("hdl_parser", "signal '{}' of entity '{}' has not been declared.", expanded_assignment, inst_type);
+                        return nullptr;
+                    }
+                    else
+                    {
+                        auto current_net = net_it->second;
 
-            //         // if the net is an internal signal, use its alias
-            //         if (std::find(e.signals_expanded.begin(), e.signals_expanded.end(), net_name) != e.signals_expanded.end())
-            //         {
-            //             net_name = aliases.at(net_name);
-            //         }
+                        // add net src/dst by pin types
+                        bool is_input  = std::find(input_pins.begin(), input_pins.end(), expanded_port) != input_pins.end();
+                        bool is_output = std::find(output_pins.begin(), output_pins.end(), expanded_port) != output_pins.end();
 
-            //         // get the respective net for the assignment
-            //         if (auto net_it = m_net_by_name.find(net_name); net_it == m_net_by_name.end())
-            //         {
-            //             log_error("hdl_parser", "signal '{}' of {} was not previously declared", net_name, e.name);
-            //             return nullptr;
-            //         }
-            //         else
-            //         {
-            //             auto current_net = net_it->second;
+                        if (!is_input && !is_output)
+                        {
+                            log_error("hdl_parser", "undefined pin '{}' for gate '{}' of type '{}'.", expanded_port, new_gate->get_name(), new_gate->get_type()->get_name());
+                            return nullptr;
+                        }
 
-            //             // add net src/dst by pin types
-            //             bool is_input  = std::find(input_pins.begin(), input_pins.end(), pin) != input_pins.end();
-            //             bool is_output = std::find(output_pins.begin(), output_pins.end(), pin) != output_pins.end();
+                        if (is_output && !current_net->add_source(new_gate, core_strings::to_std_string<T>(expanded_port)))
+                        {
+                            return nullptr;
+                        }
 
-            //             if (!is_input && !is_output)
-            //             {
-            //                 log_error("hdl_parser", "undefined pin '{}' for '{}' ({})", pin, new_gate->get_name(), new_gate->get_type()->get_name());
-            //                 return nullptr;
-            //             }
-
-            //             if (is_output && !current_net->add_source(new_gate, pin))
-            //             {
-            //                 return nullptr;
-            //             }
-
-            //             if (is_input && !current_net->add_destination(new_gate, pin))
-            //             {
-            //                 return nullptr;
-            //             }
-            //         }
-            //     }
-            // }
+                        if (is_input && !current_net->add_destination(new_gate, core_strings::to_std_string<T>(expanded_port)))
+                        {
+                            return nullptr;
+                        }
+                    }
+                }
+            }
 
             // assign instance attributes
             for (const auto& attr : inst.get_attributes())
@@ -1230,32 +1254,18 @@ private:
         return module;
     }
 
-    T get_unique_signal_suffix(const T& name)
+    T get_unique_alias(std::map<T, u32>& name_occurrences, const T& name)
     {
         // if the name only appears once, we don't have to suffix it
-        if (m_signal_name_occurrences[name] < 2)
+        if (name_occurrences[name] < 2)
         {
-            return "";
+            return name;
         }
 
-        m_current_signal_index[name]++;
+        name_occurrences[name]++;
 
         // otherwise, add a unique string to the name
-        return to_special_string("(" + std::to_string(m_current_signal_index[name]) + ")");
-    }
-
-    T get_unique_instance_suffix(const T& name)
-    {
-        // if the name only appears once, we don't have to alias it
-        if (m_instance_name_occurrences[name] < 2)
-        {
-            return "";
-        }
-
-        m_current_instance_index[name]++;
-
-        // otherwise, add a unique string to the name
-        return to_special_string("(" + std::to_string(m_current_instance_index[name]) + ")");
+        return name + core_strings::from_std_string<T>("(" + std::to_string(name_occurrences[name]) + ")");
     }
 
     std::vector<T> expand_signal_vector(const std::vector<signal>& signals, bool allow_binary)
@@ -1309,7 +1319,7 @@ private:
         {
             for (const auto& index : ranges[dimension])
             {
-                this->expand_signal_recursively(expanded_signal, current_signal + "(" + to_special_string(std::to_string(index).data()) + ")", ranges, dimension + 1);
+                this->expand_signal_recursively(expanded_signal, current_signal + "(" + core_strings::from_std_string<T>(std::to_string(index)) + ")", ranges, dimension + 1);
             }
         }
         else
