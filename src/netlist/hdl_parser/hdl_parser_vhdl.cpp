@@ -190,8 +190,18 @@ bool hdl_parser_vhdl::parse_entity()
     m_token_stream.consume("entity", true);
     u32 line_number                     = m_token_stream.peek().number;
     case_insensitive_string entity_name = m_token_stream.consume();
+
+    // verify entity name
+    if (m_entities.find(entity_name) != m_entities.end())
+    {
+        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", entity_name, line_number, m_entities.at(entity_name).get_line_number());
+        return false;
+    }
+
     m_token_stream.consume("is", true);
     entity e(line_number, entity_name);
+
+    attribute_buffer.clear();
 
     auto next_token = m_token_stream.peek();
     while (next_token != "end")
@@ -210,7 +220,7 @@ bool hdl_parser_vhdl::parse_entity()
         }
         else if (next_token == "attribute")
         {
-            if (!parse_attribute(e))
+            if (!parse_attribute())
             {
                 return false;
             }
@@ -228,17 +238,17 @@ bool hdl_parser_vhdl::parse_entity()
     m_token_stream.consume();
     m_token_stream.consume(";", true);
 
-    if (m_entities.find(entity_name) != m_entities.end())
+    if (!assign_attributes(e))
     {
-        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", entity_name, line_number, m_entities.at(entity_name).get_line_number());
         return false;
     }
 
-    if (!entity_name.empty())
-    {
-        m_entities.emplace(entity_name, e);
-        m_last_entity = entity_name;
-    }
+    // initialize entity (expand ports, signals, and assignments)
+    e.initialize(this);
+
+    // add to collection of entities
+    m_entities.emplace(entity_name, e);
+    m_last_entity = entity_name;
 
     return true;
 }
@@ -298,7 +308,7 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
     return true;
 }
 
-bool hdl_parser_vhdl::parse_attribute(entity& e)
+bool hdl_parser_vhdl::parse_attribute()
 {
     u32 line_number = m_token_stream.peek().number;
 
@@ -313,7 +323,7 @@ bool hdl_parser_vhdl::parse_attribute(entity& e)
     }
     else if (m_token_stream.peek() == "of" && m_token_stream.peek(2) == ":")
     {
-        entity::attribute_target_class target_class;
+        attribute_target_class target_class;
         m_token_stream.consume("of", true);
         auto attribute_target = m_token_stream.consume();
         m_token_stream.consume(":", true);
@@ -341,15 +351,15 @@ bool hdl_parser_vhdl::parse_attribute(entity& e)
 
         if (attribute_class == "entity")
         {
-            target_class = entity::attribute_target_class::entity;
+            target_class = attribute_target_class::entity;
         }
         else if (attribute_class == "label")
         {
-            target_class = entity::attribute_target_class::instance;
+            target_class = attribute_target_class::instance;
         }
         else if (attribute_class == "signal")
         {
-            target_class = entity::attribute_target_class::signal;
+            target_class = attribute_target_class::signal;
         }
         else
         {
@@ -357,7 +367,7 @@ bool hdl_parser_vhdl::parse_attribute(entity& e)
             return false;
         }
 
-        e.add_attribute(target_class, attribute_target, to_std_string(attribute_name), to_std_string(attribute_type), to_std_string(attribute_value));
+        attribute_buffer[target_class].emplace(attribute_target, std::make_tuple(line_number, to_std_string(attribute_name), to_std_string(attribute_type), to_std_string(attribute_value)));
     }
     else
     {
@@ -411,7 +421,7 @@ bool hdl_parser_vhdl::parse_architecture_header(entity& e)
         }
         else if (next_token == "attribute")
         {
-            if (!parse_attribute(e))
+            if (!parse_attribute())
             {
                 return false;
             }
@@ -697,6 +707,69 @@ bool hdl_parser_vhdl::parse_generic_assign(instance& inst)
         }
 
         inst.add_generic_assignment(to_std_string(lhs), to_std_string(data_type), to_std_string(value));
+    }
+
+    return true;
+}
+
+bool hdl_parser_vhdl::assign_attributes(entity& e)
+{
+    for (const auto& [target_class, attributes] : attribute_buffer)
+    {
+        // entity attributes
+        if (target_class == attribute_target_class::entity)
+        {
+            for (const auto& [target, attribute] : attributes)
+            {
+                if (e.get_name() != target)
+                {
+                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}.", target, e.get_name(), std::get<0>(attribute));
+                    return false;
+                }
+                else
+                {
+                    e.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
+                }
+            }
+        }
+
+        // instance attributes
+        if (target_class == attribute_target_class::instance)
+        {
+            auto& instances = e.get_instances();
+
+            for (const auto& [target, attribute] : attributes)
+            {
+                if (const auto& instance_it = instances.find(target); instance_it == instances.end())
+                {
+                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}.", target, e.get_name(), std::get<0>(attribute));
+                    return false;
+                }
+                else
+                {
+                    instance_it->second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
+                }
+            }
+        }
+
+        // signal attributes
+        if (target_class == attribute_target_class::signal)
+        {
+            auto& signals = e.get_signals();
+
+            for (const auto& [target, attribute] : attributes)
+            {
+                if (const auto& signal_it = signals.find(target); signal_it == signals.end())
+                {
+                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}.", target, e.get_name(), std::get<0>(attribute));
+                    return false;
+                }
+                else
+                {
+                    signal_it->second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
+                }
+            }
+        }
     }
 
     return true;

@@ -57,6 +57,16 @@ public:
     bool parse() override;
 
 private:
+    enum class attribute_target_class
+    {
+        entity,
+        instance,
+        signal
+    };
+
+    using attribute_buffer_t = std::map<attribute_target_class, std::map<case_insensitive_string, std::tuple<u32, std::string, std::string, std::string>>>;
+    attribute_buffer_t attribute_buffer;
+
     std::set<case_insensitive_string> m_libraries;
     std::map<case_insensitive_string, case_insensitive_string> m_attribute_types;
 
@@ -69,7 +79,7 @@ private:
     bool parse_library();
     bool parse_entity();
     bool parse_port_definitons(entity& e);
-    bool parse_attribute(entity& e);
+    bool parse_attribute();
     bool parse_architecture();
     bool parse_architecture_header(entity& e);
     bool parse_signal_definition(entity& e);
@@ -78,6 +88,7 @@ private:
     bool parse_instance(entity& e);
     bool parse_port_assign(entity& e, instance& inst);
     bool parse_generic_assign(instance& inst);
+    bool assign_attributes(entity& e);
 
     // helper functions
     std::vector<u32> parse_range(token_stream<case_insensitive_string>& range_str);

@@ -155,6 +155,14 @@ bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attrib
     m_token_stream.consume("module", true);
     u32 line_number         = m_token_stream.peek().number;
     std::string entity_name = m_token_stream.consume();
+
+    // verify entity name
+    if (m_entities.find(entity_name) != m_entities.end())
+    {
+        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", entity_name, line_number, m_entities.at(entity_name).get_line_number());
+        return false;
+    }
+
     entity e(line_number, entity_name);
 
     // parse port list
@@ -212,23 +220,19 @@ bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attrib
 
     m_token_stream.consume("endmodule", true);
 
-    // verify entity name
-    if (m_entities.find(entity_name) != m_entities.end())
-    {
-        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", entity_name, line_number, m_entities.at(entity_name).get_line_number());
-        return false;
-    }
-
     // assign attributes to entity
     if (!attributes.empty())
     {
         for (const auto& [attribute_name, attribute_value] : attributes)
         {
-            e.add_attribute(entity::attribute_target_class::entity, entity_name, attribute_name, "unknown", attribute_value);
+            e.add_attribute(attribute_name, "unknown", attribute_value);
         }
 
         attributes.clear();
     }
+
+    // initialize entity (expand ports, signals, and assignments)
+    e.initialize(this);
 
     // add to collection of entities
     m_entities.emplace(entity_name, e);
@@ -303,11 +307,11 @@ bool hdl_parser_verilog::parse_signal_definition(entity& e, std::map<std::string
     // assign attributes to signals
     if (!attributes.empty())
     {
-        for (const auto& s : signals)
+        for (auto& s : signals)
         {
             for (const auto& [attribute_name, attribute_value] : attributes)
             {
-                e.add_attribute(entity::attribute_target_class::signal, s.first, attribute_name, "unknown", attribute_value);
+                s.second.add_attribute(attribute_name, "unknown", attribute_value);
             }
         }
 
@@ -420,7 +424,7 @@ bool hdl_parser_verilog::parse_instance(entity& e, std::map<std::string, std::st
     {
         for (const auto& [attribute_name, attribute_value] : attributes)
         {
-            e.add_attribute(entity::attribute_target_class::instance, instance_name, attribute_name, "unknown", attribute_value);
+            inst.add_attribute(attribute_name, "unknown", attribute_value);
         }
 
         attributes.clear();
