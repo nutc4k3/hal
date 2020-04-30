@@ -104,16 +104,20 @@ bool hdl_parser_vhdl::tokenize()
                     if (c == '=' && parsed_tokens.back() == "<")
                     {
                         parsed_tokens.back() = "<=";
+                        continue;
                     }
                     else if (c == '=' && parsed_tokens.back() == ":")
                     {
                         parsed_tokens.back() = ":=";
+                        continue;
                     }
                     else if (c == '>' && parsed_tokens.back() == "=")
                     {
                         parsed_tokens.back() = "=>";
+                        continue;
                     }
                 }
+
                 if (!std::isspace(c))
                 {
                     parsed_tokens.emplace_back(line_number, core_strings::case_insensitive_string(1, c));
@@ -243,9 +247,6 @@ bool hdl_parser_vhdl::parse_entity()
         return false;
     }
 
-    // initialize entity (expand ports, signals, and assignments)
-    e.initialize(this);
-
     // add to collection of entities
     m_entities.emplace(entity_name, e);
     m_last_entity = entity_name;
@@ -260,25 +261,25 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
     // default port assignments are not supported
     m_token_stream.consume("port", true);
     m_token_stream.consume("(", true);
-    auto port_str = m_token_stream.extract_until(")");
+    auto port_def_str = m_token_stream.extract_until(")");
 
-    while (port_str.remaining() > 0)
+    while (port_def_str.remaining() > 0)
     {
         std::vector<core_strings::case_insensitive_string> port_names;
         std::set<signal> signals;
 
-        auto line_number = port_str.peek().number;
+        auto line_number = port_def_str.peek().number;
 
         // extract names
         do
         {
-            port_names.push_back(port_str.consume().string);
-        } while (port_str.consume(",", false));
+            port_names.push_back(port_def_str.consume().string);
+        } while (port_def_str.consume(",", false));
 
-        port_str.consume(":", true);
+        port_def_str.consume(":", true);
 
         // extract direction
-        auto direction = port_str.consume();
+        auto direction = port_def_str.consume();
         if (supported_directions.find(direction) == supported_directions.end())
         {
             log_error("hdl_parser", "invalid direction '{}' for port declaration in line {}.", direction.string, line_number);
@@ -286,18 +287,19 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
         }
 
         // extract ranges
-        auto ranges = parse_signal_ranges(port_str);
-        if (ranges.empty())    // TODO verify that this does not trigger for std_logic signals
+        auto port_str = port_def_str.extract_until(";");
+        auto ranges   = parse_signal_ranges(port_str);
+        if (!ranges.has_value())
         {
             // error already printed in subfunction
             return false;
         }
 
-        port_str.consume(";", port_str.remaining() > 0);    // last entry has no semicolon, so no throw in that case
+        port_def_str.consume(";", port_def_str.remaining() > 0);    // last entry has no semicolon, so no throw in that case
 
         for (const auto& name : port_names)
         {
-            signal s(line_number, name, ranges);
+            signal s(line_number, name, *ranges);
             e.add_port(direction, s);
         }
     }
@@ -459,8 +461,9 @@ bool hdl_parser_vhdl::parse_signal_definition(entity& e)
     m_token_stream.consume(":", true);
 
     // extract bounds
-    auto ranges = parse_signal_ranges(m_token_stream);
-    if (ranges.empty())    // TODO verify that this does not trigger for std_logic signals
+    auto signal_str = m_token_stream.extract_until(";");
+    auto ranges     = parse_signal_ranges(signal_str);
+    if (!ranges.has_value())
     {
         // error already printed in subfunction
         return false;
@@ -470,7 +473,7 @@ bool hdl_parser_vhdl::parse_signal_definition(entity& e)
 
     for (const auto& name : signal_names)
     {
-        signal s(line_number, name, ranges);
+        signal s(line_number, name, *ranges);
 
         e.add_signal(s);
     }
@@ -510,6 +513,10 @@ bool hdl_parser_vhdl::parse_architecture_body(entity& e)
     m_token_stream.consume("end", true);
     m_token_stream.consume();
     m_token_stream.consume(";", true);
+
+    // initialize entity (expand ports, signals, and assignments)
+    e.initialize(this);
+
     return true;
 }
 
@@ -817,32 +824,28 @@ std::vector<u32> hdl_parser_vhdl::parse_range(token_stream<core_strings::case_in
 
 static std::map<core_strings::case_insensitive_string, size_t> id_to_dim = {{"std_logic_vector", 1}, {"std_logic_vector2", 2}, {"std_logic_vector3", 3}};
 
-std::vector<std::vector<u32>> hdl_parser_vhdl::parse_signal_ranges(token_stream<core_strings::case_insensitive_string>& signal_str)
+std::optional<std::vector<std::vector<u32>>> hdl_parser_vhdl::parse_signal_ranges(token_stream<core_strings::case_insensitive_string>& signal_str)
 {
+    std::vector<std::vector<u32>> ranges;
     auto line_number = signal_str.peek().number;
 
-    // extract bounds
-    auto type_str = signal_str.extract_until(":=");    // default assignment will be ignored for now
-
-    if (type_str.size() == 1)
+    auto type_name = signal_str.consume();
+    if (type_name == "std_logic")
     {
-        type_str.consume("std_logic", true);
-        return {{}};
+        return ranges;
     }
 
-    std::vector<std::vector<u32>> ranges;
-    auto type_name = type_str.consume();
-    type_str.consume("(", true);
-    auto bound_str = type_str.extract_until(")");
-    type_str.consume(")", true);
+    signal_str.consume("(", true);
+    auto signal_bounds_str = signal_str.extract_until(")");
 
     // process ranges
-    while (bound_str.remaining() > 0)
+    do
     {
-        auto bound = bound_str.extract_until(",");
-        bound_str.consume(",", bound_str.remaining() > 0);
-        ranges.emplace_back(parse_range(bound));
-    }
+        auto bound_str = signal_bounds_str.extract_until(",");
+        ranges.emplace_back(parse_range(bound_str));
+    } while (signal_str.consume(","));
+
+    signal_str.consume(")", true);
 
     if (id_to_dim.find(type_name) != id_to_dim.end())
     {
@@ -851,13 +854,13 @@ std::vector<std::vector<u32>> hdl_parser_vhdl::parse_signal_ranges(token_stream<
         if (ranges.size() != dimension)
         {
             log_error("hdl_parser", "dimension-bound mismatch in line {} : expected {}, got {}.", line_number, dimension, ranges.size());
-            return {};
+            return std::nullopt;
         }
     }
     else
     {
         log_error("hdl_parser", "type name {} is invalid in line {}.", type_name.string, line_number);
-        return {};
+        return std::nullopt;
     }
 
     return ranges;
@@ -889,6 +892,10 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
             } while (signal_str.consume(",", false));
 
             signal_str.consume(")", true);
+        }
+        else
+        {
+            parts.push_back(signal_str);
         }
     }
     else

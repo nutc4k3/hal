@@ -91,7 +91,7 @@ private:
 
     // helper functions
     std::vector<u32> parse_range(token_stream<core_strings::case_insensitive_string>& range_str);
-    std::vector<std::vector<u32>> parse_signal_ranges(token_stream<core_strings::case_insensitive_string>& signal_str);
+    std::optional<std::vector<std::vector<u32>>> parse_signal_ranges(token_stream<core_strings::case_insensitive_string>& signal_str);
     std::optional<std::pair<std::vector<signal>, i32>> get_assignment_signals(entity& e, token_stream<core_strings::case_insensitive_string>& signal_str, bool is_left_half, bool is_port_assignment);
     core_strings::case_insensitive_string get_bin_from_literal(token<core_strings::case_insensitive_string>& value_token);
     core_strings::case_insensitive_string get_hex_from_literal(token<core_strings::case_insensitive_string>& value_token);

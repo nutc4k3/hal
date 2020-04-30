@@ -1067,20 +1067,21 @@ private:
                 const auto& port        = port_assignments.second.first;
                 const auto& assignments = port_assignments.second.second;
 
-                expanded_ports = expand_signal(port);
+                std::vector<T> expanded_port = expand_signal(port);
+                std::move(expanded_port.begin(), expanded_port.end(), std::back_inserter(expanded_ports));
 
                 for (const auto& s : assignments)
                 {
-                    std::vector<T> expanded;
+                    std::vector<T> expanded_assignment;
                     if (s.is_binary())
                     {
-                        expanded = expand_binary_signal(s);
+                        expanded_assignment = expand_binary_signal(s);
                     }
                     else
                     {
-                        expanded = expand_signal(s);
+                        expanded_assignment = expand_signal(s);
                     }
-                    std::move(expanded.begin(), expanded.end(), std::back_inserter(expanded_assignments));
+                    std::move(expanded_assignment.begin(), expanded_assignment.end(), std::back_inserter(expanded_assignments));
                 }
             }
 
