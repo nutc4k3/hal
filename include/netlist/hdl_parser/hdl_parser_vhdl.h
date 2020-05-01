@@ -58,9 +58,9 @@ public:
 private:
     enum class attribute_target_class
     {
-        entity,
-        instance,
-        signal
+        ENTITY,
+        INSTANCE,
+        SIGNAL
     };
 
     using attribute_buffer_t = std::map<attribute_target_class, std::map<core_strings::case_insensitive_string, std::tuple<u32, std::string, std::string, std::string>>>;

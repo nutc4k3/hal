@@ -261,8 +261,6 @@ bool hdl_parser_vhdl::parse_entity()
     return true;
 }
 
-static std::set<core_strings::case_insensitive_string> supported_directions = {"in", "out", "inout"};
-
 bool hdl_parser_vhdl::parse_port_definitons(entity& e)
 {
     // default port assignments are not supported
@@ -286,10 +284,23 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
         port_def_str.consume(":", true);
 
         // extract direction
-        auto direction = port_def_str.consume().string;
-        if (supported_directions.find(direction) == supported_directions.end())
+        entity::port_direction direction;
+        auto direction_str = port_def_str.consume().string;
+        if (direction_str == "in")
         {
-            log_error("hdl_parser", "invalid direction '{}' for port declaration in line {}", direction, line_number);
+            direction = entity::port_direction::IN;
+        }
+        else if (direction_str == "out")
+        {
+            direction = entity::port_direction::OUT;
+        }
+        else if (direction_str == "inout")
+        {
+            direction = entity::port_direction::INOUT;
+        }
+        else
+        {
+            log_error("hdl_parser", "invalid direction '{}' for port declaration in line {}", direction_str, line_number);
             return false;
         }
 
@@ -360,15 +371,15 @@ bool hdl_parser_vhdl::parse_attribute()
 
         if (attribute_class == "entity")
         {
-            target_class = attribute_target_class::entity;
+            target_class = attribute_target_class::ENTITY;
         }
         else if (attribute_class == "label")
         {
-            target_class = attribute_target_class::instance;
+            target_class = attribute_target_class::INSTANCE;
         }
         else if (attribute_class == "signal")
         {
-            target_class = attribute_target_class::signal;
+            target_class = attribute_target_class::SIGNAL;
         }
         else
         {
@@ -749,7 +760,7 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
     for (const auto& [target_class, attributes] : attribute_buffer)
     {
         // entity attributes
-        if (target_class == attribute_target_class::entity)
+        if (target_class == attribute_target_class::ENTITY)
         {
             for (const auto& [target, attribute] : attributes)
             {
@@ -766,7 +777,7 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
         }
 
         // instance attributes
-        if (target_class == attribute_target_class::instance)
+        if (target_class == attribute_target_class::INSTANCE)
         {
             auto& instances = e.get_instances();
 
@@ -785,7 +796,7 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
         }
 
         // signal attributes
-        if (target_class == attribute_target_class::signal)
+        if (target_class == attribute_target_class::SIGNAL)
         {
             auto& signals = e.get_signals();
 

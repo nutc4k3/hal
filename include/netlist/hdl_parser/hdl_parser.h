@@ -506,6 +506,13 @@ protected:
     class entity
     {
     public:
+        enum class port_direction
+        {
+            IN,
+            OUT,
+            INOUT
+        };
+
         entity()
         {
         }
@@ -524,12 +531,12 @@ protected:
             return _name;
         }
 
-        void add_port(const T& direction, const signal& s)
+        void add_port(port_direction direction, const signal& s)
         {
             _ports.emplace(s.get_name(), std::make_pair(direction, s));
         }
 
-        const std::map<T, std::pair<T, signal>>& get_ports() const
+        const std::map<T, std::pair<port_direction, signal>>& get_ports() const
         {
             return _ports;
         }
@@ -674,7 +681,7 @@ protected:
         T _name;
 
         // ports: port_name -> (direction, signal)
-        std::map<T, std::pair<T, signal>> _ports;
+        std::map<T, std::pair<port_direction, signal>> _ports;
 
         // signals: signal_name -> signal
         std::map<T, signal> _signals;
@@ -810,7 +817,7 @@ private:
                     return false;
                 }
 
-                if (direction == "in" || direction == "inout")
+                if (direction == entity::port_direction::IN || direction == entity::port_direction::INOUT)
                 {
                     if (!new_net->mark_global_input_net())
                     {
@@ -818,7 +825,7 @@ private:
                         return false;
                     }
                 }
-                if (direction == "out" || direction == "inout")
+                if (direction == entity::port_direction::OUT || direction == entity::port_direction::INOUT)
                 {
                     if (!new_net->mark_global_output_net())
                     {

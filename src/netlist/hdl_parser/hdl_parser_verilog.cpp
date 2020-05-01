@@ -256,21 +256,27 @@ void hdl_parser_verilog::parse_port_list(std::set<std::string>& port_names)
 
 bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::string>& port_names)
 {
-    i32 line_number       = m_token_stream.peek().number;
-    std::string direction = m_token_stream.consume();
-    auto ports            = parse_signal_list();
+    i32 line_number           = m_token_stream.peek().number;
+    std::string direction_str = m_token_stream.consume();
+    auto ports                = parse_signal_list();
 
-    if (direction == "input")
+    entity::port_direction direction;
+    if (direction_str == "input")
     {
-        direction = "in";
+        direction = entity::port_direction::IN;
     }
-    else if (direction == "output")
+    else if (direction_str == "output")
     {
-        direction = "out";
+        direction = entity::port_direction::OUT;
     }
-    else if (direction == "inout")
+    else if (direction_str == "inout")
     {
-        direction = "inout";
+        direction = entity::port_direction::INOUT;
+    }
+    else
+    {
+        log_error("hdl_parser", "invalid direction '{}' for port declaration in line {}", direction_str, line_number);
+        return false;
     }
 
     if (ports.empty())
