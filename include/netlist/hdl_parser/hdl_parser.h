@@ -1291,7 +1291,7 @@ private:
         name_occurrences[name]++;
 
         // otherwise, add a unique string to the name
-        return name + core_strings::from_std_string<T>("(" + std::to_string(name_occurrences[name]) + ")");
+        return name + core_strings::from_std_string<T>("__[" + std::to_string(name_occurrences[name]) + "]__");
     }
 
     std::vector<T> expand_binary_signal(const signal& s)
