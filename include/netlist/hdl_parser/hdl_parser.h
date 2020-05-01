@@ -73,6 +73,16 @@ public:
      */
     virtual bool parse() = 0;
 
+    std::shared_ptr<netlist> parse_and_instantiate(const std::string& gate_library)
+    {
+        if (parse())
+        {
+            return instantiate(gate_library);
+        }
+
+        return nullptr;
+    }
+
     std::shared_ptr<netlist> instantiate(const std::string& gate_library)
     {
         // create empty netlist
@@ -341,10 +351,10 @@ protected:
 
         void add_attribute(const std::string& name, const std::string& type, const std::string& value)
         {
-            _attributes.emplace(std::make_tuple(name, type, value));
+            _attributes.push_back(std::make_tuple(name, type, value));
         }
 
-        const std::set<std::tuple<std::string, std::string, std::string>>& get_attributes() const
+        const std::vector<std::tuple<std::string, std::string, std::string>>& get_attributes() const
         {
             return _attributes;
         }
@@ -379,7 +389,7 @@ protected:
         std::vector<std::vector<u32>> _ranges;
 
         // attributes: set(attribute_name, attribute_type, attribute_value)
-        std::set<std::tuple<std::string, std::string, std::string>> _attributes;
+        std::vector<std::tuple<std::string, std::string, std::string>> _attributes;
 
         // is binary string?
         bool _binary = false;
@@ -471,10 +481,10 @@ protected:
 
         void add_attribute(const std::string& name, const std::string& type, const std::string& value)
         {
-            _attributes.emplace(std::make_tuple(name, type, value));
+            _attributes.push_back(std::make_tuple(name, type, value));
         }
 
-        const std::set<std::tuple<std::string, std::string, std::string>>& get_attributes() const
+        const std::vector<std::tuple<std::string, std::string, std::string>>& get_attributes() const
         {
             return _attributes;
         }
@@ -500,7 +510,7 @@ protected:
         std::map<std::string, std::pair<std::string, std::string>> _generic_assignments;
 
         // attributes: set(attribute_name, attribute_type, attribute_value)
-        std::set<std::tuple<std::string, std::string, std::string>> _attributes;
+        std::vector<std::tuple<std::string, std::string, std::string>> _attributes;
     };
 
     class entity
@@ -563,10 +573,10 @@ protected:
 
         void add_assignment(const std::vector<signal>& s, const std::vector<signal>& assignment)
         {
-            _assignments.emplace(std::make_pair(s, assignment));
+            _assignments.push_back(std::make_pair(s, assignment));
         }
 
-        const std::set<std::pair<std::vector<signal>, std::vector<signal>>>& get_assignments() const
+        const std::vector<std::pair<std::vector<signal>, std::vector<signal>>>& get_assignments() const
         {
             return _assignments;
         }
@@ -588,10 +598,10 @@ protected:
 
         void add_attribute(const std::string& name, const std::string& type, const std::string& value)
         {
-            _attributes.emplace(std::make_tuple(name, type, value));
+            _attributes.push_back(std::make_tuple(name, type, value));
         }
 
-        const std::set<std::tuple<std::string, std::string, std::string>>& get_attributes() const
+        const std::vector<std::tuple<std::string, std::string, std::string>>& get_attributes() const
         {
             return _attributes;
         }
@@ -687,13 +697,13 @@ protected:
         std::map<T, signal> _signals;
 
         // assignments: set(lhs, rhs)
-        std::set<std::pair<std::vector<signal>, std::vector<signal>>> _assignments;
+        std::vector<std::pair<std::vector<signal>, std::vector<signal>>> _assignments;
 
         // instances: instance_name -> instance
         std::map<T, instance> _instances;
 
         // attributes: set(attribute_name, attribute_type, attribute_value)
-        std::set<std::tuple<std::string, std::string, std::string>> _attributes;
+        std::vector<std::tuple<std::string, std::string, std::string>> _attributes;
 
         // is already initialized?
         bool _initialized = false;
@@ -797,7 +807,6 @@ private:
         std::unordered_map<T, T> top_assignments;
         auto& expanded_ports = top_entity.get_expanded_ports();
 
-        // TODO enum for directions
         for (const auto& [port_name, port] : top_entity.get_ports())
         {
             auto direction = port.first;
