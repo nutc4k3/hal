@@ -313,6 +313,13 @@ public:
     }
 
 protected:
+    enum class port_direction
+    {
+        IN,
+        OUT,
+        INOUT
+    };
+
     class signal
     {
     public:
@@ -516,13 +523,6 @@ protected:
     class entity
     {
     public:
-        enum class port_direction
-        {
-            IN,
-            OUT,
-            INOUT
-        };
-
         entity()
         {
         }
@@ -740,9 +740,10 @@ private:
     std::map<T, std::shared_ptr<net>> m_net_by_name;
     std::map<T, std::vector<T>> m_nets_to_merge;
 
+    // buffer gate types
     std::map<T, std::shared_ptr<const gate_type>> m_tmp_gate_types;
 
-    std::map<T, std::function<bool(net&)>> mark_global_net_function_map = {{"in", &net::mark_global_input_net}, {"out", &net::mark_global_output_net}};
+    std::map<std::shared_ptr<net>, std::tuple<port_direction, std::string, std::shared_ptr<module>>> m_module_ports;
 
     bool build_netlist(const T& top_module)
     {
@@ -804,7 +805,7 @@ private:
         }
 
         // for the top module, generate global i/o signals for all ports
-        std::unordered_map<T, T> top_assignments;
+        std::map<T, T> top_assignments;
         auto& expanded_ports = top_entity.get_expanded_ports();
 
         for (const auto& [port_name, port] : top_entity.get_ports())
@@ -826,7 +827,7 @@ private:
                     return false;
                 }
 
-                if (direction == entity::port_direction::IN || direction == entity::port_direction::INOUT)
+                if (direction == port_direction::IN || direction == port_direction::INOUT)
                 {
                     if (!new_net->mark_global_input_net())
                     {
@@ -834,7 +835,7 @@ private:
                         return false;
                     }
                 }
-                if (direction == entity::port_direction::OUT || direction == entity::port_direction::INOUT)
+                if (direction == port_direction::OUT || direction == port_direction::INOUT)
                 {
                     if (!new_net->mark_global_output_net())
                     {
@@ -924,8 +925,14 @@ private:
                         }
                     }
 
-                    // make sure to keep module ports up to date
+                    // update module ports
+                    if (const auto& it = m_module_ports.find(slave_net); it != m_module_ports.end())
+                    {
+                        m_module_ports[master_net] = it->second;
+                        m_module_ports.erase(it);
+                    }
 
+                    // make sure to keep module ports up to date
                     m_netlist->delete_net(slave_net);
                     m_net_by_name.erase(slave);
                 }
@@ -942,10 +949,28 @@ private:
             }
         }
 
+        // assign module ports
+        for (const auto& [net, port_info] : m_module_ports)
+        {
+            auto direction = std::get<0>(port_info);
+            auto port_name = std::get<1>(port_info);
+            auto module    = std::get<2>(port_info);
+
+            if (direction == port_direction::IN || direction == port_direction::INOUT)
+            {
+                module->set_input_port_name(net, port_name);
+            }
+
+            if (direction == port_direction::OUT || direction == port_direction::INOUT)
+            {
+                module->set_output_port_name(net, port_name);
+            }
+        }
+
         return true;
     }
 
-    std::shared_ptr<module> instantiate(const instance& entity_inst, std::shared_ptr<module> parent, std::unordered_map<T, T> parent_module_assignments)
+    std::shared_ptr<module> instantiate(const instance& entity_inst, std::shared_ptr<module> parent, const std::map<T, T>& parent_module_assignments)
     {
         std::map<T, T> signal_alias;
         std::map<T, T> instance_alias;
@@ -989,6 +1014,21 @@ private:
                           std::get<0>(attr),
                           std::get<1>(attr),
                           std::get<2>(attr));
+            }
+        }
+
+        // assign module port names
+        const auto& expanded = e.get_expanded_ports();
+        for (const auto& [port_name, port] : e.get_ports())
+        {
+            auto direction = port.first;
+
+            for (const auto& expanded_name : expanded.at(port_name))
+            {
+                if (const auto& it = parent_module_assignments.find(expanded_name); it != parent_module_assignments.end())
+                {
+                    m_module_ports[m_net_by_name.at(it->second)] = std::make_tuple(direction, core_strings::to_std_string(expanded_name), module);
+                }
             }
         }
 
@@ -1070,10 +1110,9 @@ private:
             data_container* container;
 
             // assign actual signal names to ports
-            std::unordered_map<T, T> instance_assignments;
+            std::map<T, T> instance_assignments;
 
             // expand port assignments
-            std::map<T, T> expanded_port_assignments;
             std::vector<T> expanded_ports;
             std::vector<T> expanded_assignments;
 
@@ -1100,29 +1139,25 @@ private:
                 }
             }
 
-            std::transform(expanded_ports.begin(), expanded_ports.end(), expanded_assignments.begin(), std::inserter(expanded_port_assignments, expanded_port_assignments.end()), [](T s, T a) {
-                return std::make_pair(s, a);
-            });
-
-            for (const auto& [expanded_port, expanded_assignment] : expanded_port_assignments)
+            for (unsigned int i = 0; i < expanded_ports.size(); i++)
             {
-                if (auto it = parent_module_assignments.find(expanded_assignment); it != parent_module_assignments.end())
+                if (auto it = parent_module_assignments.find(expanded_assignments[i]); it != parent_module_assignments.end())
                 {
-                    instance_assignments[expanded_port] = it->second;
+                    instance_assignments[expanded_ports[i]] = it->second;
                 }
                 else
                 {
-                    if (auto alias_it = signal_alias.find(expanded_assignment); alias_it != signal_alias.end())
+                    if (auto alias_it = signal_alias.find(expanded_assignments[i]); alias_it != signal_alias.end())
                     {
-                        instance_assignments[expanded_port] = alias_it->second;
+                        instance_assignments[expanded_ports[i]] = alias_it->second;
                     }
-                    else if (expanded_assignment == "'0'" || expanded_assignment == "'1'" || expanded_assignment == "'Z'")
+                    else if (expanded_assignments[i] == "'0'" || expanded_assignments[i] == "'1'" || expanded_assignments[i] == "'Z'")
                     {
-                        instance_assignments[expanded_port] = expanded_assignment;
+                        instance_assignments[expanded_ports[i]] = expanded_assignments[i];
                     }
                     else
                     {
-                        log_error("hdl_parser", "signal assignment \"{} = {}\" of instance {} is invalid", expanded_port, expanded_assignment, inst_name);
+                        log_error("hdl_parser", "signal assignment \"{} = {}\" of instance {} is invalid", expanded_ports[i], expanded_assignments[i], inst_name);
                         return nullptr;
                     }
                 }
@@ -1186,24 +1221,14 @@ private:
                 }
 
                 // check for port
-                for (auto [expanded_port, expanded_assignment] : expanded_port_assignments)
+                for (const auto& [port, assignment] : instance_assignments)
                 {
-                    T pin = expanded_port;
-
-                    // apply port assignments
-                    if (auto instance_it = instance_assignments.find(expanded_port); instance_it != instance_assignments.end())
-                    {
-                        expanded_assignment = instance_it->second;
-                    }
-                    else if (auto alias_it = signal_alias.find(expanded_assignment); alias_it != signal_alias.end())
-                    {
-                        expanded_assignment = alias_it->second;
-                    }
+                    T pin = port;
 
                     // get the respective net for the assignment
-                    if (const auto& net_it = m_net_by_name.find(expanded_assignment); net_it == m_net_by_name.end())
+                    if (const auto& net_it = m_net_by_name.find(assignment); net_it == m_net_by_name.end())
                     {
-                        log_error("hdl_parser", "signal '{}' of entity '{}' has not been declared", expanded_assignment, inst_type);
+                        log_error("hdl_parser", "signal '{}' of entity '{}' has not been declared", assignment, inst_type);
                         return nullptr;
                     }
                     else
@@ -1212,14 +1237,14 @@ private:
 
                         // add net src/dst by pin types
                         bool is_input = false;
-                        if (const auto& input_it = std::find(input_pins.begin(), input_pins.end(), expanded_port); input_it != input_pins.end())
+                        if (const auto& input_it = std::find(input_pins.begin(), input_pins.end(), port); input_it != input_pins.end())
                         {
                             is_input = true;
                             pin      = *input_it;
                         }
 
                         bool is_output = false;
-                        if (const auto& output_it = std::find(output_pins.begin(), output_pins.end(), expanded_port); output_it != output_pins.end())
+                        if (const auto& output_it = std::find(output_pins.begin(), output_pins.end(), port); output_it != output_pins.end())
                         {
                             is_output = true;
                             pin       = *output_it;
@@ -1227,7 +1252,7 @@ private:
 
                         if (!is_input && !is_output)
                         {
-                            log_error("hdl_parser", "undefined pin '{}' for gate '{}' of type '{}'", expanded_port, new_gate->get_name(), new_gate->get_type()->get_name());
+                            log_error("hdl_parser", "undefined pin '{}' for gate '{}' of type '{}'", port, new_gate->get_name(), new_gate->get_type()->get_name());
                             return nullptr;
                         }
 

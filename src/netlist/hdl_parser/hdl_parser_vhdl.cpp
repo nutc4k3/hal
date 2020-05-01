@@ -284,19 +284,19 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
         port_def_str.consume(":", true);
 
         // extract direction
-        entity::port_direction direction;
+        port_direction direction;
         auto direction_str = port_def_str.consume().string;
         if (direction_str == "in")
         {
-            direction = entity::port_direction::IN;
+            direction = port_direction::IN;
         }
         else if (direction_str == "out")
         {
-            direction = entity::port_direction::OUT;
+            direction = port_direction::OUT;
         }
         else if (direction_str == "inout")
         {
-            direction = entity::port_direction::INOUT;
+            direction = port_direction::INOUT;
         }
         else
         {

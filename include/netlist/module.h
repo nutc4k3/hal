@@ -182,7 +182,7 @@ public:
      * @param[in] input_net - The input net.
      * @returns The port name.
      */
-    std::string get_input_port_name(const std::shared_ptr<net>& input_net);
+    const std::string& get_input_port_name(const std::shared_ptr<net>& input_net);
 
     /**
      * Get the name of the port corresponding to the specified output net.
@@ -190,21 +190,21 @@ public:
      * @param[in] output_net - The output net.
      * @returns The port name.
      */
-    std::string get_output_port_name(const std::shared_ptr<net>& output_net);
+    const std::string& get_output_port_name(const std::shared_ptr<net>& output_net);
 
     /**
      * Get the mapping of all input nets to their corresponding port names.
      * 
      * @returns The map from input net to port name.
      */
-    std::map<std::shared_ptr<net>, std::string> get_input_port_names();
+    const std::map<std::shared_ptr<net>, std::string>& get_input_port_names();
 
     /**
      * Get the mapping of all output nets to their corresponding port names.
      * 
      * @returns The map from output net to port name.
      */
-    std::map<std::shared_ptr<net>, std::string> get_output_port_names();
+    const std::map<std::shared_ptr<net>, std::string>& get_output_port_names();
 
     /*
      * ################################################################

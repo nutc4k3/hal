@@ -342,6 +342,7 @@ void module::set_input_port_name(const std::shared_ptr<net>& input_net, const st
         return;
     }
 
+    m_named_input_nets.insert(input_net);
     m_input_net_to_port_name.insert_or_assign(input_net, port_name);
 
     module_event_handler::notify(module_event_handler::event::input_port_name_changed, shared_from_this(), input_net->get_id());
@@ -357,12 +358,13 @@ void module::set_output_port_name(const std::shared_ptr<net>& output_net, const 
         return;
     }
 
+    m_named_input_nets.insert(output_net);
     m_output_net_to_port_name.insert_or_assign(output_net, port_name);
 
     module_event_handler::notify(module_event_handler::event::output_port_name_changed, shared_from_this(), output_net->get_id());
 }
 
-std::string module::get_input_port_name(const std::shared_ptr<net>& input_net)
+const std::string& module::get_input_port_name(const std::shared_ptr<net>& input_net)
 {
     std::string port_name;
     auto input_nets = get_input_nets();
@@ -387,7 +389,7 @@ std::string module::get_input_port_name(const std::shared_ptr<net>& input_net)
     return port_name;
 }
 
-std::string module::get_output_port_name(const std::shared_ptr<net>& output_net)
+const std::string& module::get_output_port_name(const std::shared_ptr<net>& output_net)
 {
     std::string port_name;
     auto output_nets = get_output_nets();
@@ -412,7 +414,7 @@ std::string module::get_output_port_name(const std::shared_ptr<net>& output_net)
     return port_name;
 }
 
-std::map<std::shared_ptr<net>, std::string> module::get_input_port_names()
+const std::map<std::shared_ptr<net>, std::string>& module::get_input_port_names()
 {
     auto input_nets = get_input_nets();
     std::set<std::shared_ptr<net>> diff;
@@ -438,7 +440,7 @@ std::map<std::shared_ptr<net>, std::string> module::get_input_port_names()
     return m_input_net_to_port_name;
 }
 
-std::map<std::shared_ptr<net>, std::string> module::get_output_port_names()
+const std::map<std::shared_ptr<net>, std::string>& module::get_output_port_names()
 {
     auto output_nets = get_output_nets();
     std::set<std::shared_ptr<net>> diff;

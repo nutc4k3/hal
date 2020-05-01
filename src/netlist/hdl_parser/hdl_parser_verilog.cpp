@@ -260,18 +260,18 @@ bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::st
     std::string direction_str = m_token_stream.consume();
     auto ports                = parse_signal_list();
 
-    entity::port_direction direction;
+    port_direction direction;
     if (direction_str == "input")
     {
-        direction = entity::port_direction::IN;
+        direction = port_direction::IN;
     }
     else if (direction_str == "output")
     {
-        direction = entity::port_direction::OUT;
+        direction = port_direction::OUT;
     }
     else if (direction_str == "inout")
     {
-        direction = entity::port_direction::INOUT;
+        direction = port_direction::INOUT;
     }
     else
     {
