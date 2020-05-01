@@ -209,8 +209,6 @@ int main(int argc, const char* argv[])
     }
 
     /* handle input file */
-    gate_library_manager::load_all();
-
     if (args.is_option_set("--empty-netlist") && args.is_option_set("--input-file"))
     {
         log_error("core", "Found --empty-netlist and --input-file!");
@@ -228,19 +226,11 @@ int main(int argc, const char* argv[])
 
     if (args.is_option_set("--empty-netlist"))
     {
-        netlist   = netlist_factory::create_netlist(args.get_parameter("--gate-library"));
         file_name = hal::path("./empty_netlist.hal");
     }
     else
     {
-        netlist   = netlist_factory::load_netlist(args);
         file_name = hal::path(args.get_parameter("--input-file"));
-    }
-
-    if (netlist == nullptr)
-    {
-        cleanup();
-        return -1;
     }
 
     if (args.is_option_set("--no-log"))
@@ -253,6 +243,21 @@ int main(int argc, const char* argv[])
     {
         auto log_path = file_name;
         lm.set_file_name(log_path.replace_extension(".log"));
+    }
+
+    if (args.is_option_set("--empty-netlist"))
+    {
+        netlist   = netlist_factory::create_netlist(args.get_parameter("--gate-library"));
+    }
+    else
+    {
+        netlist   = netlist_factory::load_netlist(args);
+    }
+
+    if (netlist == nullptr)
+    {
+        cleanup();
+        return -1;
     }
 
     bool volatile_mode = false;
