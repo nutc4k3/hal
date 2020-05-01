@@ -90,8 +90,7 @@ namespace hdl_parser_dispatcher
 
         // all supported extension->parser_name mappings
         std::map<std::string, std::string> file_endings = {{".vhdl", "vhdl"}, {".vhd", "vhdl"}, {".v", "verilog"}};
-        auto extension                                  = file_name.extension().string();
-        std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+        auto extension                                  = core_utils::to_lower(file_name.extension().string());
 
         auto parser_name = file_endings[extension];
         if (parser_name.empty())
@@ -109,12 +108,14 @@ namespace hdl_parser_dispatcher
         }
 
         std::vector<std::string> gate_libraries;
-        if (!args.is_option_set("--gate-library"))
+        if (!args.is_option_set("--gate-library") || gate_library_manager::get_gate_library(args.get_parameter("--gate-library")) == nullptr)
         {
-            log_warning("hdl_parser", "no gate library specified. trying to auto-detect gate library...");
-            for (const auto& it : gate_library_manager::get_gate_libraries())
+            log_warning("hdl_parser", "no (valid) gate library specified. trying to auto-detect gate library...");
+            gate_library_manager::load_all();
+
+            for (const auto& lib_it : gate_library_manager::get_gate_libraries())
             {
-                gate_libraries.push_back(it->get_name());
+                gate_libraries.push_back(lib_it->get_name());
             }
         }
         else

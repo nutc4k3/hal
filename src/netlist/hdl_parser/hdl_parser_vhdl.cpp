@@ -34,11 +34,11 @@ bool hdl_parser_vhdl::parse()
     {
         if (e.line_number != (u32)-1)
         {
-            log_error("hdl_parser", "{} near line {}.", e.message, e.line_number);
+            log_error("hdl_parser", "{} near line {}", e.message, e.line_number);
         }
         else
         {
-            log_error("hdl_parser", "{}.", e.message);
+            log_error("hdl_parser", "{}", e.message);
         }
         return false;
     }
@@ -74,11 +74,18 @@ bool hdl_parser_vhdl::tokenize()
             if (c == '\\')
             {
                 escaped = !escaped;
+                continue;
+            }
+            else if (escaped && std::isspace(c))
+            {
+                escaped = false;
+                continue;
             }
             else if (!escaped && c == '"')
             {
                 in_string = !in_string;
             }
+
             if (delimiters.find(c) == std::string::npos || escaped || in_string)
             {
                 current_token += c;
@@ -198,7 +205,7 @@ bool hdl_parser_vhdl::parse_entity()
     // verify entity name
     if (m_entities.find(entity_name) != m_entities.end())
     {
-        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", entity_name, line_number, m_entities.at(entity_name).get_line_number());
+        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {})", entity_name, line_number, m_entities.at(entity_name).get_line_number());
         return false;
     }
 
@@ -231,7 +238,7 @@ bool hdl_parser_vhdl::parse_entity()
         }
         else
         {
-            log_error("hdl_parser", "unexpected token '{}' in entity defintion in line {}.", next_token.string, next_token.number);
+            log_error("hdl_parser", "unexpected token '{}' in entity defintion in line {}", next_token.string, next_token.number);
             return false;
         }
 
@@ -279,10 +286,10 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
         port_def_str.consume(":", true);
 
         // extract direction
-        auto direction = port_def_str.consume();
+        auto direction = port_def_str.consume().string;
         if (supported_directions.find(direction) == supported_directions.end())
         {
-            log_error("hdl_parser", "invalid direction '{}' for port declaration in line {}.", direction.string, line_number);
+            log_error("hdl_parser", "invalid direction '{}' for port declaration in line {}", direction, line_number);
             return false;
         }
 
@@ -343,7 +350,7 @@ bool hdl_parser_vhdl::parse_attribute()
         auto type_it = m_attribute_types.find(attribute_name);
         if (type_it == m_attribute_types.end())
         {
-            log_warning("hdl_parser", "attribute {} has unknown base type in line {}.", attribute_name, line_number);
+            log_warning("hdl_parser", "attribute {} has unknown base type in line {}", attribute_name, line_number);
             attribute_type = "unknown";
         }
         else
@@ -365,7 +372,7 @@ bool hdl_parser_vhdl::parse_attribute()
         }
         else
         {
-            log_error("hdl_parser", "invalid attribute class '{}' in line {}.", attribute_class.string, line_number);
+            log_error("hdl_parser", "invalid attribute class '{}' in line {}", attribute_class.string, line_number);
             return false;
         }
 
@@ -377,7 +384,7 @@ bool hdl_parser_vhdl::parse_attribute()
     }
     else
     {
-        log_error("hdl_parser", "malformed attribute defintion in line {}.", line_number);
+        log_error("hdl_parser", "malformed attribute defintion in line {}", line_number);
         return false;
     }
 
@@ -395,7 +402,7 @@ bool hdl_parser_vhdl::parse_architecture()
     auto it = m_entities.find(entity_name);
     if (it == m_entities.end())
     {
-        log_error("hdl_parser", "architecture refers to entity '{}', but no such entity exists.", entity_name.string);
+        log_error("hdl_parser", "architecture refers to entity '{}', but no such entity exists", entity_name.string);
         return false;
     }
     auto& e = it->second;
@@ -420,9 +427,16 @@ bool hdl_parser_vhdl::parse_architecture_header(entity& e)
         else if (next_token == "component")
         {
             // components are ignored
+            m_token_stream.consume("component", true);
+            auto component_name = m_token_stream.consume().string;
             m_token_stream.consume_until("end");
             m_token_stream.consume("end", true);
             m_token_stream.consume();
+            m_token_stream.consume("component", true);
+            if (m_token_stream.peek() != ";")
+            {
+                m_token_stream.consume(component_name, true);    // optional repetition of component name
+            }
             m_token_stream.consume(";", true);
         }
         else if (next_token == "attribute")
@@ -541,7 +555,7 @@ bool hdl_parser_vhdl::parse_assign(entity& e)
 
     if (left_parts->second != right_parts->second)
     {
-        log_error("hdl_parser", "assignment width mismatch: left side has size {} and right side has size {} in line {}.", left_parts->second, right_parts->second, line_number);
+        log_error("hdl_parser", "assignment width mismatch: left side has size {} and right side has size {} in line {}", left_parts->second, right_parts->second, line_number);
         return false;
     }
 
@@ -566,6 +580,11 @@ bool hdl_parser_vhdl::parse_instance(entity& e)
         if (pos != std::string::npos)
         {
             instance_type = instance_type.substr(pos + 1);
+        }
+        if (m_entities.find(instance_type) == m_entities.end())
+        {
+            log_error("hdl_parser", "trying to instantiate unknown entity '{}' in line {}", instance_type, line_number);
+            return false;
         }
     }
     else if (m_token_stream.peek() == "component")
@@ -736,7 +755,7 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
             {
                 if (e.get_name() != target)
                 {
-                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}.", target, e.get_name(), std::get<0>(attribute));
+                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}", target, e.get_name(), std::get<0>(attribute));
                     return false;
                 }
                 else
@@ -755,7 +774,7 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
             {
                 if (const auto& instance_it = instances.find(target); instance_it == instances.end())
                 {
-                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}.", target, e.get_name(), std::get<0>(attribute));
+                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}", target, e.get_name(), std::get<0>(attribute));
                     return false;
                 }
                 else
@@ -774,7 +793,7 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
             {
                 if (const auto& signal_it = signals.find(target); signal_it == signals.end())
                 {
-                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}.", target, e.get_name(), std::get<0>(attribute));
+                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}", target, e.get_name(), std::get<0>(attribute));
                     return false;
                 }
                 else
@@ -853,13 +872,13 @@ std::optional<std::vector<std::vector<u32>>> hdl_parser_vhdl::parse_signal_range
 
         if (ranges.size() != dimension)
         {
-            log_error("hdl_parser", "dimension-bound mismatch in line {} : expected {}, got {}.", line_number, dimension, ranges.size());
+            log_error("hdl_parser", "dimension-bound mismatch in line {} : expected {}, got {}", line_number, dimension, ranges.size());
             return std::nullopt;
         }
     }
     else
     {
-        log_error("hdl_parser", "type name {} is invalid in line {}.", type_name.string, line_number);
+        log_error("hdl_parser", "type name {} is invalid in line {}", type_name.string, line_number);
         return std::nullopt;
     }
 
@@ -902,7 +921,7 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
     {
         if (signal_str.find_next(",") != token_stream<core_strings::case_insensitive_string>::END_OF_STREAM)
         {
-            log_error("hdl_parser", "aggregation is not allowed at this position in line {}.", signal_str.peek().number);
+            log_error("hdl_parser", "aggregation is not allowed at this position in line {}", signal_str.peek().number);
             return std::nullopt;
         }
         parts.push_back(signal_str);
@@ -923,7 +942,7 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
         {
             if (is_left_half)
             {
-                log_error("hdl_parser", "numeric value {} not allowed at this position in line {}.", signal_name.string, line_number);
+                log_error("hdl_parser", "numeric value {} not allowed at this position in line {}", signal_name.string, line_number);
                 return std::nullopt;
             }
 
@@ -974,7 +993,7 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
                     }
                     else
                     {
-                        log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}.", signal_name.string, line_number);
+                        log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}", signal_name.string, line_number);
                         return std::nullopt;
                     }
                 }
@@ -1030,7 +1049,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
                 }
                 else
                 {
-                    log_error("hdl_parser", "invalid character within binary number literal {} in line {}.", value, line_number);
+                    log_error("hdl_parser", "invalid character within binary number literal {} in line {}", value, line_number);
                     return "";
                 }
             }
@@ -1046,7 +1065,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
                 }
                 else
                 {
-                    log_error("hdl_parser", "invalid character within octal number literal {} in line {}.", value, line_number);
+                    log_error("hdl_parser", "invalid character within octal number literal {} in line {}", value, line_number);
                     return "";
                 }
             }
@@ -1062,7 +1081,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
                 }
                 else
                 {
-                    log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}.", value, line_number);
+                    log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}", value, line_number);
                     return "";
                 }
             }
@@ -1070,7 +1089,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
         }
 
         default: {
-            log_error("hdl_parser", "invalid base '{}' within number literal {} in line {}.", prefix, value, line_number);
+            log_error("hdl_parser", "invalid base '{}' within number literal {} in line {}", prefix, value, line_number);
             return "";
         }
     }
@@ -1095,7 +1114,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
         case 'b': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '1'); }))
             {
-                log_error("hdl_parser", "invalid character within binary number literal {} in line {}.", value, line_number);
+                log_error("hdl_parser", "invalid character within binary number literal {} in line {}", value, line_number);
                 return "";
             }
 
@@ -1107,7 +1126,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
         case 'o': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '7'); }))
             {
-                log_error("hdl_parser", "invalid character within octal number literal {} in line {}.", value, line_number);
+                log_error("hdl_parser", "invalid character within octal number literal {} in line {}", value, line_number);
                 return "";
             }
 
@@ -1119,7 +1138,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
         case 'h': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); }))
             {
-                log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}.", value, line_number);
+                log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}", value, line_number);
                 return "";
             }
 
@@ -1129,7 +1148,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
         }
 
         default: {
-            log_error("hdl_parser", "invalid base '{}' within number literal {} in line {}.", prefix, value, line_number);
+            log_error("hdl_parser", "invalid base '{}' within number literal {} in line {}", prefix, value, line_number);
             return "";
         }
     }

@@ -33,11 +33,11 @@ bool hdl_parser_verilog::parse()
     {
         if (e.line_number != (u32)-1)
         {
-            log_error("hdl_parser", "{} near line {}.", e.message, e.line_number);
+            log_error("hdl_parser", "{} near line {}", e.message, e.line_number);
         }
         else
         {
-            log_error("hdl_parser", "{}.", e.message);
+            log_error("hdl_parser", "{}", e.message);
         }
         return false;
     }
@@ -159,7 +159,7 @@ bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attrib
     // verify entity name
     if (m_entities.find(entity_name) != m_entities.end())
     {
-        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {}).", entity_name, line_number, m_entities.at(entity_name).get_line_number());
+        log_error("hdl_parser", "an entity with the name '{}' does already exist (see line {} and line {})", entity_name, line_number, m_entities.at(entity_name).get_line_number());
         return false;
     }
 
@@ -283,7 +283,7 @@ bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::st
     {
         if (port_names.find(port.first) == port_names.end())
         {
-            log_error("hdl_parser", "port name '{}' in line {} has not been declared in entity port list.", port.first, line_number);
+            log_error("hdl_parser", "port name '{}' in line {} has not been declared in entity port list", port.first, line_number);
             return false;
         }
 
@@ -346,7 +346,7 @@ bool hdl_parser_verilog::parse_assign(entity& e)
 
     if (left_parts->second != right_parts->second)
     {
-        log_error("hdl_parser", "assignment width mismatch: left side has size {} and right side has size {} in line {}.", left_parts->second, right_parts->second, line_number);
+        log_error("hdl_parser", "assignment width mismatch: left side has size {} and right side has size {} in line {}", left_parts->second, right_parts->second, line_number);
         return false;
     }
 
@@ -415,7 +415,7 @@ bool hdl_parser_verilog::parse_instance(entity& e, std::map<std::string, std::st
     const auto& instances = e.get_instances();
     if (instances.find(instance_name) != instances.end())
     {
-        log_error("hdl_parser", "an instance with the name '{}' does already exist (see line {} and line {}).", instance_name, line_number, instances.at(instance_name).get_line_number());
+        log_error("hdl_parser", "an instance with the name '{}' does already exist (see line {} and line {})", instance_name, line_number, instances.at(instance_name).get_line_number());
         return false;
     }
 
@@ -700,7 +700,7 @@ std::optional<std::pair<std::vector<hdl_parser_verilog::signal>, i32>> hdl_parse
         {
             if (!allow_numerics)
             {
-                log_error("hdl_parser", "numeric value {} not allowed at this position in line {}.", signal_name, line_number);
+                log_error("hdl_parser", "numeric value {} not allowed at this position in line {}", signal_name, line_number);
                 return std::nullopt;
             }
 
@@ -729,7 +729,7 @@ std::optional<std::pair<std::vector<hdl_parser_verilog::signal>, i32>> hdl_parse
             }
             else
             {
-                log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}.", signal_name, line_number);
+                log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}", signal_name, line_number);
                 return std::nullopt;
             }
 
@@ -816,7 +816,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
                 }
                 else
                 {
-                    log_error("hdl_parser", "invalid character within binary number literal {} in line {}.", value, line_number);
+                    log_error("hdl_parser", "invalid character within binary number literal {} in line {}", value, line_number);
                     return "";
                 }
             }
@@ -832,7 +832,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
                 }
                 else
                 {
-                    log_error("hdl_parser", "invalid character within octal number literal {} in line {}.", value, line_number);
+                    log_error("hdl_parser", "invalid character within octal number literal {} in line {}", value, line_number);
                     return "";
                 }
             }
@@ -849,7 +849,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
                 }
                 else
                 {
-                    log_error("hdl_parser", "invalid character within octal number literal {} in line {}.", value, line_number);
+                    log_error("hdl_parser", "invalid character within octal number literal {} in line {}", value, line_number);
                     return "";
                 }
             }
@@ -871,7 +871,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
                 }
                 else
                 {
-                    log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}.", value, line_number);
+                    log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}", value, line_number);
                     return "";
                 }
             }
@@ -879,7 +879,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
         }
 
         default: {
-            log_error("hdl_parser", "invalid base '{}' within number literal {} in line {}.", prefix, value, line_number);
+            log_error("hdl_parser", "invalid base '{}' within number literal {} in line {}", prefix, value, line_number);
             return "";
         }
     }
@@ -923,7 +923,7 @@ std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_t
         case 'b': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '1'); }))
             {
-                log_error("hdl_parser", "invalid character within binary number literal {} in line {}.", value, line_number);
+                log_error("hdl_parser", "invalid character within binary number literal {} in line {}", value, line_number);
                 return "";
             }
 
@@ -934,7 +934,7 @@ std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_t
         case 'o': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '7'); }))
             {
-                log_error("hdl_parser", "invalid character within octal number literal {} in line {}.", value, line_number);
+                log_error("hdl_parser", "invalid character within octal number literal {} in line {}", value, line_number);
                 return "";
             }
 
@@ -945,7 +945,7 @@ std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_t
         case 'd': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '9'); }))
             {
-                log_error("hdl_parser", "invalid character within decimal number literal {} in line {}.", value, line_number);
+                log_error("hdl_parser", "invalid character within decimal number literal {} in line {}", value, line_number);
                 return "";
             }
 
@@ -956,7 +956,7 @@ std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_t
         case 'h': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); }))
             {
-                log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}.", value, line_number);
+                log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}", value, line_number);
                 return "";
             }
 
@@ -965,7 +965,7 @@ std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_t
         }
 
         default: {
-            log_error("hdl_parser", "invalid base '{}' within number literal {} in line {}.", prefix, value, line_number);
+            log_error("hdl_parser", "invalid base '{}' within number literal {} in line {}", prefix, value, line_number);
             return "";
         }
     }

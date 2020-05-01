@@ -45,11 +45,6 @@
 #include <type_traits>
 #include <vector>
 
-// TODO module ports
-// TODO port attributes
-// TODO multi-bit pins for gates
-// TODO module types
-
 /* forward declaration*/
 class netlist;
 
@@ -91,7 +86,7 @@ public:
         // any entities in netlist?
         if (m_entities.empty())
         {
-            log_error("hdl_parser", "file did not contain any entities.");
+            log_error("hdl_parser", "file did not contain any entities");
             return nullptr;
         }
 
@@ -139,7 +134,7 @@ public:
                                 if (left_size != right_size)
                                 {
                                     log_error("hdl_parser",
-                                              "port assignment width mismatch: left side has size {} and right side has size {} in line {}.",
+                                              "port assignment width mismatch: left side has size {} and right side has size {} in line {}",
                                               left_size,
                                               right_size,
                                               assignment.first.get_line_number());
@@ -148,12 +143,8 @@ public:
                             }
                             else
                             {
-                                log_error("hdl_parser",
-                                          "port '{}' is no valid port for instance '{}' of entity '{}' in line {}.",
-                                          port_name,
-                                          inst_name,
-                                          entity_it->first,
-                                          assignment.first.get_line_number());
+                                log_error(
+                                    "hdl_parser", "port '{}' is no valid port for instance '{}' of entity '{}' in line {}", port_name, inst_name, entity_it->first, assignment.first.get_line_number());
                                 return nullptr;
                             }
                         }
@@ -198,7 +189,7 @@ public:
                         }
                         else
                         {
-                            log_error("hdl_parser", "pin '{}' is no valid pin for gate '{}' of type '{}' in line {}.", port_name, inst_name, gate_it->first, assignment.first.get_line_number());
+                            log_error("hdl_parser", "pin '{}' is no valid pin for gate '{}' of type '{}' in line {}", port_name, inst_name, gate_it->first, assignment.first.get_line_number());
                             return nullptr;
                         }
 
@@ -212,7 +203,7 @@ public:
                         if (left_size != right_size)
                         {
                             log_error("hdl_parser",
-                                      "port assignment width mismatch: port has width {} and assigned signal has width {} in line {}.",
+                                      "port assignment width mismatch: port has width {} and assigned signal has width {} in line {}",
                                       left_size,
                                       right_size,
                                       assignment.first.get_line_number());
@@ -222,7 +213,7 @@ public:
                 }
                 else
                 {
-                    log_error("hdl_parser", "type '{}' of instance '{}' is neither an entity, nor a gate type in line {}.", inst.get_type(), inst_name, inst.get_line_number());
+                    log_error("hdl_parser", "type '{}' of instance '{}' is neither an entity, nor a gate type in line {}", inst.get_type(), inst_name, inst.get_line_number());
                     return nullptr;
                 }
             }
@@ -785,13 +776,13 @@ private:
         {
             if (!e.second.is_initialized())
             {
-                log_warning("hdl_parser", "entity '{}' has not been initialized during parsing, this may affect performance.", e.first);
+                log_warning("hdl_parser", "entity '{}' has not been initialized during parsing, this may affect performance", e.first);
                 e.second.initialize(this);
             }
 
             if (instantiation_count[e.first] == 0)
             {
-                log_warning("hdl_parser", "entity '{}' defined but not used.", e.first);
+                log_warning("hdl_parser", "entity '{}' defined but not used", e.first);
             }
         }
 
@@ -799,6 +790,7 @@ private:
         std::unordered_map<T, T> top_assignments;
         auto& expanded_ports = top_entity.get_expanded_ports();
 
+        // TODO enum for directions
         for (const auto& [port_name, port] : top_entity.get_ports())
         {
             auto direction = port.first;
@@ -810,7 +802,7 @@ private:
                 m_net_by_name[expanded_name] = new_net;
 
                 // for instances, point the ports to the newly generated signals
-                top_assignments[expanded_name] = expanded_name;
+                top_assignments[expanded_name] = core_strings::from_std_string<T>(new_net->get_name());
 
                 if (new_net == nullptr)
                 {
@@ -840,7 +832,7 @@ private:
         instance top_instance(top_entity.get_line_number(), top_entity.get_name(), "top_module");
         if (instantiate(top_instance, nullptr, top_assignments) == nullptr)
         {
-            log_error("hdl_parser", "could not instantiate module '{}'.", top_entity.get_name());
+            // error printed in subfunction
             return false;
         }
 
@@ -912,7 +904,7 @@ private:
                     {
                         if (!master_net->set_data(std::get<0>(it.first), std::get<1>(it.first), std::get<0>(it.second), std::get<1>(it.second)))
                         {
-                            log_error("hdl_parser", "couldn't set data.");
+                            log_error("hdl_parser", "couldn't set data");
                         }
                     }
 
@@ -929,7 +921,7 @@ private:
 
             if (!progress_made)
             {
-                log_error("hdl_parser", "cyclic dependency between signals found, cannot parse netlist.");
+                log_error("hdl_parser", "cyclic dependency between signals found, cannot parse netlist");
                 return false;
             }
         }
@@ -963,6 +955,7 @@ private:
 
         if (module == nullptr)
         {
+            log_error("hdl_parser", "could not instantiate instance '{}' of entity '{}'", entity_inst_name, e.get_name());
             return nullptr;
         }
 
@@ -973,9 +966,8 @@ private:
         {
             if (!module->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
             {
-                log_error("hdl_parser", "couldn't set data");
                 log_error("hdl_parser",
-                          "cannot set data: key for entity '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                          "could not set data for entity '{}' in line {}: key: {}, value_data_type: {}, value: {}",
                           e.get_name(),
                           e.get_line_number(),
                           std::get<0>(attr),
@@ -993,9 +985,9 @@ private:
 
                 // create new net for the signal
                 auto new_net = m_netlist->create_net(core_strings::to_std_string<T>(signal_alias.at(expanded_name)));
-
                 if (new_net == nullptr)
                 {
+                    log_error("hdl_parser", "could not instantiate net '{}' of instance '{}' of entity '{}'", expanded_name, entity_inst_name, e.get_name());
                     return nullptr;
                 }
 
@@ -1006,9 +998,8 @@ private:
                 {
                     if (!new_net->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
                     {
-                        log_error("hdl_parser", "couldn't set data");
                         log_error("hdl_parser",
-                                  "cannot set data: key for signal '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                                  "could not set data for signal '{}' in line {}: key: {}, value_data_type: {}, value: {}",
                                   signal_name,
                                   entity_signals.at(signal_name).get_line_number(),
                                   std::get<0>(attr),
@@ -1025,22 +1016,30 @@ private:
             T a = s;
             T b = assignment;
 
-            if (auto it = parent_module_assignments.find(a); it != parent_module_assignments.end())
+            if (auto parent_it = parent_module_assignments.find(a); parent_it != parent_module_assignments.end())
             {
-                a = it->second;
+                a = parent_it->second;
             }
-            else
+            else if (auto alias_it = signal_alias.find(a); alias_it != signal_alias.end())
             {
-                a = signal_alias.at(a);
+                a = alias_it->second;
+            }
+            else if (a != "'0'" && a != "'1'" && a != "'Z'")
+            {
+                log_warning("hdl_parser", "no alias for net '{}'", a);
             }
 
-            if (auto it = parent_module_assignments.find(b); it != parent_module_assignments.end())
+            if (auto parent_it = parent_module_assignments.find(b); parent_it != parent_module_assignments.end())
             {
-                b = it->second;
+                b = parent_it->second;
             }
-            else if (b != "'0'" && b != "'1'")
+            else if (auto alias_it = signal_alias.find(b); alias_it != signal_alias.end())
             {
-                b = signal_alias.at(b);
+                b = alias_it->second;
+            }
+            else if (b != "'0'" && b != "'1'" && b != "'Z'")
+            {
+                log_warning("hdl_parser", "no alias for net '{}'", b);
             }
 
             m_nets_to_merge[b].push_back(a);
@@ -1101,7 +1100,7 @@ private:
                     {
                         instance_assignments[expanded_port] = alias_it->second;
                     }
-                    else if (expanded_assignment == "'0'" || expanded_assignment == "'1'")
+                    else if (expanded_assignment == "'0'" || expanded_assignment == "'1'" || expanded_assignment == "'Z'")
                     {
                         instance_assignments[expanded_port] = expanded_assignment;
                     }
@@ -1132,7 +1131,7 @@ private:
 
                 if (auto gate_type_it = m_tmp_gate_types.find(inst_type); gate_type_it == m_tmp_gate_types.end())
                 {
-                    log_error("hdl_parser", "no gate type '{}' in gate library '{}'.", inst_type, m_netlist->get_gate_library()->get_name());
+                    log_error("hdl_parser", "could not find gate type '{}' in gate library '{}'", inst_type, m_netlist->get_gate_library()->get_name());
                     return nullptr;
                 }
                 else
@@ -1142,6 +1141,7 @@ private:
 
                 if (new_gate == nullptr)
                 {
+                    log_error("hdl_parser", "could not instantiate gate '{}' within entity '{}'", inst_name, e.get_name());
                     return nullptr;
                 }
 
@@ -1172,6 +1172,8 @@ private:
                 // check for port
                 for (auto [expanded_port, expanded_assignment] : expanded_port_assignments)
                 {
+                    T pin = expanded_port;
+
                     // apply port assignments
                     if (auto instance_it = instance_assignments.find(expanded_port); instance_it != instance_assignments.end())
                     {
@@ -1185,7 +1187,7 @@ private:
                     // get the respective net for the assignment
                     if (const auto& net_it = m_net_by_name.find(expanded_assignment); net_it == m_net_by_name.end())
                     {
-                        log_error("hdl_parser", "signal '{}' of entity '{}' has not been declared.", expanded_assignment, inst_type);
+                        log_error("hdl_parser", "signal '{}' of entity '{}' has not been declared", expanded_assignment, inst_type);
                         return nullptr;
                     }
                     else
@@ -1193,21 +1195,32 @@ private:
                         auto current_net = net_it->second;
 
                         // add net src/dst by pin types
-                        bool is_input  = std::find(input_pins.begin(), input_pins.end(), expanded_port) != input_pins.end();
-                        bool is_output = std::find(output_pins.begin(), output_pins.end(), expanded_port) != output_pins.end();
+                        bool is_input = false;
+                        if (const auto& input_it = std::find(input_pins.begin(), input_pins.end(), expanded_port); input_it != input_pins.end())
+                        {
+                            is_input = true;
+                            pin      = *input_it;
+                        }
+
+                        bool is_output = false;
+                        if (const auto& output_it = std::find(output_pins.begin(), output_pins.end(), expanded_port); output_it != output_pins.end())
+                        {
+                            is_output = true;
+                            pin       = *output_it;
+                        }
 
                         if (!is_input && !is_output)
                         {
-                            log_error("hdl_parser", "undefined pin '{}' for gate '{}' of type '{}'.", expanded_port, new_gate->get_name(), new_gate->get_type()->get_name());
+                            log_error("hdl_parser", "undefined pin '{}' for gate '{}' of type '{}'", expanded_port, new_gate->get_name(), new_gate->get_type()->get_name());
                             return nullptr;
                         }
 
-                        if (is_output && !current_net->add_source(new_gate, core_strings::to_std_string<T>(expanded_port)))
+                        if (is_output && !current_net->add_source(new_gate, core_strings::to_std_string<T>(pin)))
                         {
                             return nullptr;
                         }
 
-                        if (is_input && !current_net->add_destination(new_gate, core_strings::to_std_string<T>(expanded_port)))
+                        if (is_input && !current_net->add_destination(new_gate, core_strings::to_std_string<T>(pin)))
                         {
                             return nullptr;
                         }
@@ -1221,7 +1234,7 @@ private:
                 if (!container->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
                 {
                     log_error("hdl_parser",
-                              "cannot set data: key for instance '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                              "could not set data for instance '{}' in line {}: key: {}, value_data_type: {}, value: {}",
                               inst_name,
                               inst.get_line_number(),
                               std::get<0>(attr),
@@ -1237,7 +1250,7 @@ private:
                 if (!container->set_data("generic", generic_name, generic.first, generic.second))
                 {
                     log_error("hdl_parser",
-                              "cannot set data: key for instance '{}' in line {}: {}, value_data_type: {}, value: {}.",
+                              "could not set data for instance '{}' in line {}: key: {}, value_data_type: {}, value: {}",
                               inst_name,
                               inst.get_line_number(),
                               generic_name,
@@ -1265,6 +1278,44 @@ private:
         return name + core_strings::from_std_string<T>("(" + std::to_string(name_occurrences[name]) + ")");
     }
 
+    std::vector<T> expand_binary_signal(const signal& s)
+    {
+        std::vector<T> res;
+
+        for (const auto& bin_value : s.get_name())
+        {
+            res.push_back(T(1, bin_value));
+        }
+
+        return res;
+    }
+
+    std::vector<T> expand_signal(const signal& s)
+    {
+        std::vector<T> res;
+
+        expand_signal_recursively(res, s.get_name(), s.get_ranges(), 0);
+
+        return res;
+    }
+
+    void expand_signal_recursively(std::vector<T>& expanded_signal, const T& current_signal, const std::vector<std::vector<u32>>& ranges, u32 dimension)
+    {
+        // expand signal recursively
+        if (ranges.size() > dimension)
+        {
+            for (const auto& index : ranges[dimension])
+            {
+                this->expand_signal_recursively(expanded_signal, current_signal + "(" + core_strings::from_std_string<T>(std::to_string(index)) + ")", ranges, dimension + 1);
+            }
+        }
+        else
+        {
+            // last dimension
+            expanded_signal.push_back(current_signal);
+        }
+    }
+
     std::vector<T> expand_signal_vector(const std::vector<signal>& signals, bool allow_binary)
     {
         std::vector<T> res;
@@ -1286,43 +1337,5 @@ private:
         }
 
         return res;
-    }
-
-    std::vector<T> expand_signal(const signal& s)
-    {
-        std::vector<T> res;
-
-        expand_signal_recursively(res, s.get_name(), s.get_ranges(), 0);
-
-        return res;
-    }
-
-    std::vector<T> expand_binary_signal(const signal& s)
-    {
-        std::vector<T> res;
-
-        for (const auto& bin_value : s.get_name())
-        {
-            res.push_back(T(1, bin_value));
-        }
-
-        return res;
-    }
-
-    void expand_signal_recursively(std::vector<T>& expanded_signal, const T& current_signal, const std::vector<std::vector<u32>>& ranges, u32 dimension)
-    {
-        // expand signal recursively
-        if (ranges.size() > dimension)
-        {
-            for (const auto& index : ranges[dimension])
-            {
-                this->expand_signal_recursively(expanded_signal, current_signal + "(" + core_strings::from_std_string<T>(std::to_string(index)) + ")", ranges, dimension + 1);
-            }
-        }
-        else
-        {
-            // last dimension
-            expanded_signal.push_back(current_signal);
-        }
     }
 };
