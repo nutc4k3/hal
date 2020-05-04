@@ -25,7 +25,7 @@ protected:
 TEST_F(log_test, check_channel_functions)
 {
     TEST_START
-    unsigned int current_channel_count = lm.get_channels().size();
+    unsigned int start_channel_count = lm.get_channels().size();
 
     // ########################
     // POSITIVE TESTS
@@ -34,13 +34,12 @@ TEST_F(log_test, check_channel_functions)
     //Add a channel "test_channel"
     lm.add_channel("test_channel", {log_manager::create_stdout_sink(), log_manager::create_file_sink(), log_manager::create_gui_sink()}, "info");
 
-    EXPECT_EQ(lm.get_channels().size(), current_channel_count + 1);
+    EXPECT_EQ(lm.get_channels().size(), start_channel_count + 1);
     EXPECT_NE(lm.get_channel("test_channel"), lm.get_channel("null"));
 
     //Remove an existing channel
-    current_channel_count = lm.get_channels().size();
     lm.remove_channel("test_channel");
-    EXPECT_EQ(lm.get_channels().size(), current_channel_count - 1);
+    EXPECT_EQ(lm.get_channels().size(), start_channel_count);
 
     // ########################
     // NEGATIVE TESTS
@@ -48,28 +47,25 @@ TEST_F(log_test, check_channel_functions)
 
     NO_COUT_TEST_BLOCK;
     //Add the same channel twice (should not append the channel)
-    current_channel_count = lm.get_channels().size();
     lm.add_channel("test_channel", {log_manager::create_stdout_sink(), log_manager::create_file_sink(), log_manager::create_gui_sink()}, "info");
-    EXPECT_EQ(lm.get_channels().size(), current_channel_count + 1);
-    current_channel_count = lm.get_channels().size();
+    EXPECT_EQ(lm.get_channels().size(), start_channel_count + 1);
     lm.add_channel("test_channel", {log_manager::create_stdout_sink(), log_manager::create_file_sink(), log_manager::create_gui_sink()}, "info");
-    EXPECT_EQ(lm.get_channels().size(), current_channel_count);
+    EXPECT_EQ(lm.get_channels().size(), start_channel_count + 1);
 
     //Get an non existing channel
-    current_channel_count = lm.get_channels().size();
-    EXPECT_NE(lm.get_channel("non_exisiting_channel"), nullptr);
-    EXPECT_EQ(lm.get_channels().size(), current_channel_count + 1);
+    EXPECT_EQ(lm.get_channel("non_exisiting_channel"), lm.get_channel("null"));
 
     //Remove a non-existing channel
-    current_channel_count = lm.get_channels().size();
     lm.remove_channel("this_channel_does_not_exist");
-    EXPECT_EQ(log_manager::get_instance().get_channels().size(), current_channel_count);
+    EXPECT_EQ(log_manager::get_instance().get_channels().size(), start_channel_count + 1);
 
     //Remove the same channel twice
-    current_channel_count = lm.get_channels().size();
     lm.remove_channel("test_channel");
     lm.remove_channel("test_channel");
-    EXPECT_EQ(lm.get_channels().size(), current_channel_count - 1);
+    EXPECT_EQ(lm.get_channels().size(), start_channel_count);
+
+    //Try to get a removed channel
+    EXPECT_EQ(lm.get_channel("test_channel"), lm.get_channel("null"));
     TEST_END
 }
 
