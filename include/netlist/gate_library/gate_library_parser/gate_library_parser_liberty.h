@@ -79,22 +79,12 @@ private:
         std::vector<u32> range;
     };
 
-    struct pin_group
-    {
-        u32 line_number;
-        std::vector<std::vector<std::string>> names;
-        pin_direction direction = pin_direction::UNKNOWN;
-        std::string function;
-        std::string x_function;
-        std::string z_function;
-    };
-
     struct bus_group
     {
         u32 line_number;
         std::string name;
         pin_direction direction = pin_direction::UNKNOWN;
-        std::vector<pin_group> pin_groups;
+        std::vector<std::string> pin_names;
         std::vector<u32> range;
     };
 
@@ -138,14 +128,15 @@ private:
         u32 line_number;
         std::string name;
         gate_type::base_type type = gate_type::base_type::combinatorial;
-        std::vector<pin_group> pins;
         std::map<std::string, bus_group> buses;
-        std::vector<std::string> input_pins;
-        std::vector<std::string> output_pins;
-        std::vector<std::string> inout_pins;
         ff_group ff;
         latch_group latch;
         lut_group lut;
+        std::vector<std::string> input_pins;
+        std::vector<std::string> output_pins;
+        std::map<std::string, std::string> functions;
+        std::map<std::string, std::string> x_functions;
+        std::map<std::string, std::string> z_functions;
     };
 
     token_stream<std::string> m_token_stream;
@@ -156,7 +147,7 @@ private:
 
     bool parse_cell(token_stream<std::string>& library_stream);
     bool parse_type(token_stream<std::string>& str);
-    std::optional<pin_group> parse_pin(token_stream<std::string>& str, cell_group& cell, pin_direction direction = pin_direction::UNKNOWN);
+    bool parse_pin(token_stream<std::string>& str, cell_group& cell, pin_direction direction = pin_direction::UNKNOWN, const std::string& pin_name = "");
     std::optional<bus_group> parse_bus(token_stream<std::string>& str, cell_group& cell);
     std::optional<ff_group> parse_ff(token_stream<std::string>& str);
     std::optional<latch_group> parse_latch(token_stream<std::string>& str);
@@ -164,5 +155,5 @@ private:
     std::shared_ptr<gate_type> construct_gate_type(cell_group& cell);
 
     void remove_comments(std::string& line, bool& multi_line_comment);
-    std::map<std::string, std::string> expand_bus_pin_function(const pin_group& pin, const std::map<std::string, bus_group>& buses);
+    void prepare_bus_pin_functions(cell_group& cell, std::map<std::string, std::string>& functions, const bus_group& bus);
 };
