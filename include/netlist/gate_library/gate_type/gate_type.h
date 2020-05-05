@@ -192,6 +192,14 @@ public:
     void add_boolean_function(std::string name, boolean_function bf);
 
     /**
+     * Add multiple boolean functions to the gate type.
+     *
+     * @param[in] functions - Map from function name to boolean function.
+     */
+    // TODO python API
+    void add_boolean_functions(const std::map<std::string, boolean_function>& functions);
+
+    /**
      * Get a map containing the boolean functions of the gate type.
      *
      * @returns A map from function names to boolean functions.

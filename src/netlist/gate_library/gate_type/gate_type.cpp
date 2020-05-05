@@ -100,6 +100,11 @@ void gate_type::add_boolean_function(std::string pin_name, boolean_function bf)
     m_functions.emplace(pin_name, bf);
 }
 
+void gate_type::add_boolean_functions(const std::map<std::string, boolean_function>& functions)
+{
+    m_functions.insert(functions.begin(), functions.end());
+}
+
 std::string gate_type::get_name() const
 {
     return m_name;
