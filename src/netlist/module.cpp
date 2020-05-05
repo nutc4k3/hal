@@ -364,7 +364,7 @@ void module::set_output_port_name(const std::shared_ptr<net>& output_net, const 
     module_event_handler::notify(module_event_handler::event::output_port_name_changed, shared_from_this(), output_net->get_id());
 }
 
-const std::string& module::get_input_port_name(const std::shared_ptr<net>& input_net)
+std::string module::get_input_port_name(const std::shared_ptr<net>& input_net)
 {
     std::string port_name;
     auto input_nets = get_input_nets();
@@ -389,7 +389,7 @@ const std::string& module::get_input_port_name(const std::shared_ptr<net>& input
     return port_name;
 }
 
-const std::string& module::get_output_port_name(const std::shared_ptr<net>& output_net)
+std::string module::get_output_port_name(const std::shared_ptr<net>& output_net)
 {
     std::string port_name;
     auto output_nets = get_output_nets();
