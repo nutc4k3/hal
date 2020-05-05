@@ -20,26 +20,30 @@ std::shared_ptr<netlist> test_utils::create_empty_netlist(const int id)
     return nl;
 }
 
-endpoint test_utils::get_endpoint(const std::shared_ptr<gate> g, const std::string pin_type)
-{
-    endpoint ep;
-    ep.gate     = g;
-    ep.pin_type = pin_type;
-    return ep;
-}
-
-endpoint test_utils::get_endpoint(const std::shared_ptr<netlist> nl, const int gate_id, const std::string pin_type)
+endpoint test_utils::get_endpoint(const std::shared_ptr<netlist>& nl, const int gate_id, const std::string& pin_type, bool is_destination)
 {
     std::shared_ptr<gate> g = nl->get_gate_by_id(gate_id);
     if (g != nullptr)
-        return get_endpoint(g, pin_type);
+        return endpoint(g, pin_type, is_destination);
     else
-        return get_endpoint(nullptr, "");
+        return endpoint(nullptr, "", is_destination);
 }
 
-bool test_utils::is_empty(const endpoint ep)
+endpoint test_utils::get_endpoint(const std::shared_ptr<gate> g, const std::string& pin_type)
 {
-    return ((ep.gate == nullptr) && (ep.pin_type == ""));
+    if (g == nullptr || pin_type == ""){
+        return endpoint(nullptr, "", false);
+    }
+    std::shared_ptr<netlist> nl = g->get_netlist();
+    int gate_id = g->get_id();
+    auto in_pins = g->get_type()->get_input_pins();
+    bool is_destination = (std::find(in_pins.begin(), in_pins.end(), pin_type) != in_pins.end());
+    return get_endpoint(nl, gate_id, pin_type, is_destination);
+}
+
+bool test_utils::is_empty(const endpoint& ep)
+{
+    return ((ep.get_gate() == nullptr) && (ep.get_pin() == ""));
 }
 
 std::shared_ptr<const gate_type> test_utils::get_gate_type_by_name(std::string name, std::string gate_library_name)
@@ -347,25 +351,25 @@ std::shared_ptr<netlist> test_utils::create_example_netlist(const int id)
 
     // Add the nets (net_x_y1_y2... := net between the gate with id x and the gates y1,y2,...)
     std::shared_ptr<net> net_1_3 = nl->create_net(MIN_NET_ID+13, "net_1_3");
-    net_1_3->set_src(gate_1, "O");
-    net_1_3->add_dst(gate_3, "I");
+    net_1_3->add_source(gate_1, "O");
+    net_1_3->add_destination(gate_3, "I");
 
     std::shared_ptr<net> net_3_0 = nl->create_net(MIN_NET_ID+30, "net_3_0");
-    net_3_0->set_src(gate_3, "O");
-    net_3_0->add_dst(gate_0, "I0");
+    net_3_0->add_source(gate_3, "O");
+    net_3_0->add_destination(gate_0, "I0");
 
     std::shared_ptr<net> net_2_0 = nl->create_net(MIN_NET_ID+20, "net_2_0");
-    net_2_0->set_src(gate_2, "O");
-    net_2_0->add_dst(gate_0, "I1");
+    net_2_0->add_source(gate_2, "O");
+    net_2_0->add_destination(gate_0, "I1");
 
     std::shared_ptr<net> net_0_4_5 = nl->create_net(MIN_NET_ID+045, "net_0_4_5");
-    net_0_4_5->set_src(gate_0, "O");
-    net_0_4_5->add_dst(gate_4, "I");
-    net_0_4_5->add_dst(gate_5, "I0");
+    net_0_4_5->add_source(gate_0, "O");
+    net_0_4_5->add_destination(gate_4, "I");
+    net_0_4_5->add_destination(gate_5, "I0");
 
     std::shared_ptr<net> net_7_8 = nl->create_net(MIN_NET_ID+78, "net_7_8");
-    net_7_8->set_src(gate_7, "O");
-    net_7_8->add_dst(gate_8, "I0");
+    net_7_8->add_source(gate_7, "O");
+    net_7_8->add_destination(gate_8, "I0");
 
     return nl;
 }
@@ -385,15 +389,15 @@ std::shared_ptr<netlist> test_utils::create_example_netlist_2(const int id)
     // Add the nets (net_x_y1_y2... := net between the gate with id x and the gates y1,y2,...)
 
     std::shared_ptr<net> net_0_1_3 = nl->create_net(MIN_NET_ID+013, "net_0_1_3");
-    net_0_1_3->set_src(gate_0, "O");
-    net_0_1_3->add_dst(gate_1, "I0");
-    net_0_1_3->add_dst(gate_1, "I1");
-    net_0_1_3->add_dst(gate_1, "I2");
-    net_0_1_3->add_dst(gate_3, "I0");
+    net_0_1_3->add_source(gate_0, "O");
+    net_0_1_3->add_destination(gate_1, "I0");
+    net_0_1_3->add_destination(gate_1, "I1");
+    net_0_1_3->add_destination(gate_1, "I2");
+    net_0_1_3->add_destination(gate_3, "I0");
 
     std::shared_ptr<net> net_2_1 = nl->create_net(MIN_NET_ID+21, "net_2_1");
-    net_2_1->set_src(gate_2, "O");
-    net_2_1->add_dst(gate_1, "I3");
+    net_2_1->add_source(gate_2, "O");
+    net_2_1->add_destination(gate_1, "I3");
 
     return nl;
 }
@@ -409,11 +413,11 @@ std::shared_ptr<netlist> test_utils::create_example_netlist_negative(const int i
 
     // net connected to the input pin
     std::shared_ptr<net> net_X_1 = nl->create_net(MIN_GATE_ID+0, "net_X_1");
-    net_X_1->add_dst(gate_0, "I");
+    net_X_1->add_destination(gate_0, "I");
 
     // net connected to the output pin
     std::shared_ptr<net> net_1_X = nl->create_net(MIN_GATE_ID+1, "net_1_X");
-    net_1_X->set_src(gate_0, "O");
+    net_1_X->add_source(gate_0, "O");
 
     return nl;
 }
@@ -436,35 +440,35 @@ std::shared_ptr<netlist> test_utils::create_example_parse_netlist(int id)
     std::shared_ptr<gate> gate_7 = nl->create_gate(MIN_GATE_ID+7, gl->get_gate_types().at("OR2"), "gate_7");
 
     // Add the nets (net_x_y1_y2... := net between the gate with id x and the gates y1,y2,...)
-    std::shared_ptr<net> net_1_3 = nl->create_net(MIN_NET_ID+13, "0_net");
-    net_1_3->set_src(gate_1, "O");
-    net_1_3->add_dst(gate_3, "I");
+    std::shared_ptr<net> net_1_3 = nl->create_net(MIN_NET_ID+13, "gnd_net");
+    net_1_3->add_source(gate_1, "O");
+    net_1_3->add_destination(gate_3, "I");
 
     std::shared_ptr<net> net_3_0 = nl->create_net(MIN_NET_ID+30, "net_3_0");
-    net_3_0->set_src(gate_3, "O");
-    net_3_0->add_dst(gate_0, "I0");
+    net_3_0->add_source(gate_3, "O");
+    net_3_0->add_destination(gate_0, "I0");
 
-    std::shared_ptr<net> net_2_0 = nl->create_net(MIN_NET_ID+20, "1_net");
-    net_2_0->set_src(gate_2, "O");
-    net_2_0->add_dst(gate_0, "I1");
+    std::shared_ptr<net> net_2_0 = nl->create_net(MIN_NET_ID+20, "vcc_net");
+    net_2_0->add_source(gate_2, "O");
+    net_2_0->add_destination(gate_0, "I1");
 
     std::shared_ptr<net> net_0_4_5 = nl->create_net(MIN_NET_ID+045, "net_0_4_5");
-    net_0_4_5->set_src(gate_0, "O");
-    net_0_4_5->add_dst(gate_4, "I");
-    net_0_4_5->add_dst(gate_5, "I0");
+    net_0_4_5->add_source(gate_0, "O");
+    net_0_4_5->add_destination(gate_4, "I");
+    net_0_4_5->add_destination(gate_5, "I0");
 
     std::shared_ptr<net> net_6_7 = nl->create_net(MIN_NET_ID+67, "net_6_7");
-    net_6_7->set_src(gate_6, "O");
-    net_6_7->add_dst(gate_7, "I0");
+    net_6_7->add_source(gate_6, "O");
+    net_6_7->add_destination(gate_7, "I0");
 
     std::shared_ptr<net> net_4_out = nl->create_net(MIN_NET_ID+400, "net_4_out");
-    net_4_out->set_src(gate_4, "O");
+    net_4_out->add_source(gate_4, "O");
 
     std::shared_ptr<net> net_5_out = nl->create_net(MIN_NET_ID+500, "net_5_out");
-    net_5_out->set_src(gate_5, "O");
+    net_5_out->add_source(gate_5, "O");
 
     std::shared_ptr<net> net_7_out = nl->create_net(MIN_NET_ID+700, "net_7_out");
-    net_7_out->set_src(gate_7, "O");
+    net_7_out->add_source(gate_7, "O");
 
     return nl;
 }
@@ -478,16 +482,16 @@ std::shared_ptr<gate> test_utils::create_test_gate(std::shared_ptr<netlist> nl, 
 }
 
 
-endpoint test_utils::get_dst_by_pin_type(const std::vector<endpoint> dsts, const std::string pin_type)
+endpoint test_utils::get_destination_by_pin_type(const std::vector<endpoint> dsts, const std::string pin_type)
 {
     for (auto dst : dsts)
     {
-        if (dst.get_pin_type() == pin_type)
+        if (dst.get_pin() == pin_type)
         {
             return dst;
         }
     }
-    return {nullptr, ""};
+    return {nullptr, "", true};
 }
 
 bool test_utils::nets_are_equal(const std::shared_ptr<net> n0, const std::shared_ptr<net> n1, const bool ignore_id, const bool ignore_name)
@@ -503,13 +507,13 @@ bool test_utils::nets_are_equal(const std::shared_ptr<net> n0, const std::shared
         return false;
     if (!ignore_name && n0->get_name() != n1->get_name())
         return false;
-    if (n0->get_src().get_pin_type() != n1->get_src().get_pin_type())
+    if (n0->get_source().get_pin() != n1->get_source().get_pin())
         return false;
-    if (!gates_are_equal(n0->get_src().get_gate(), n1->get_src().get_gate(), ignore_id, ignore_name))
+    if (!gates_are_equal(n0->get_source().get_gate(), n1->get_source().get_gate(), ignore_id, ignore_name))
         return false;
-    for (auto n0_dst : n0->get_dsts())
+    for (auto n0_destination : n0->get_destinations())
     {
-        if (!gates_are_equal(n0_dst.get_gate(), get_dst_by_pin_type(n1->get_dsts(), n0_dst.get_pin_type()).get_gate(), ignore_id, ignore_name))
+        if (!gates_are_equal(n0_destination.get_gate(), get_destination_by_pin_type(n1->get_destinations(), n0_destination.get_pin()).get_gate(), ignore_id, ignore_name))
         {
             return false;
         }
@@ -694,18 +698,18 @@ std::function<bool(const std::shared_ptr<net>&)> test_utils::net_name_filter(con
 }
 
 std::function<bool(const endpoint&)> test_utils::endpoint_type_filter(const std::string& type){
-    return [type](auto& ep){return ep.gate->get_type()->get_name() == type;};
+    return [type](auto& ep){return ep.get_gate()->get_type()->get_name() == type;};
 }
 
 std::function<bool(const std::string&, const endpoint&)> test_utils::endpoint_pin_filter(const std::string& pin){
-    return [pin](auto&, auto& ep){return ep.pin_type == pin;};
+    return [pin](auto&, auto& ep){return ep.get_pin() == pin;};
 }
 std::function<bool(const std::string&, const endpoint&)> test_utils::starting_pin_filter(const std::string& pin){
     return [pin](auto& starting_pin, auto&){return starting_pin == pin;};
 }
 
 std::function<bool(const std::string&, const endpoint&)> test_utils::type_filter(const std::string& type){
-    return [type](auto&, auto& ep){return ep.gate->get_type()->get_name() == type;};
+    return [type](auto&, auto& ep){return ep.get_gate()->get_type()->get_name() == type;};
 }
 
 
