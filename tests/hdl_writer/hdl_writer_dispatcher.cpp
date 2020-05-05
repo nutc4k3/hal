@@ -45,8 +45,8 @@ protected:
         std::shared_ptr<net> g_out_net = nl->create_net("global_out");
         nl->mark_global_input_net(g_in_net);
         nl->mark_global_output_net(g_out_net);
-        g_in_net->add_dst(inv_gate, "I");
-        g_out_net->set_src(inv_gate, "O");
+        g_in_net->add_destination(inv_gate, "I");
+        g_out_net->add_source(inv_gate, "O");
 
         return nl;
     }
