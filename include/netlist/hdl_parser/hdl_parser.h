@@ -1101,6 +1101,27 @@ private:
             m_nets_to_merge[b].push_back(a);
         }
 
+        std::map<T, std::shared_ptr<const gate_type>> vcc_gate_types;
+        std::map<T, std::shared_ptr<const gate_type>> gnd_gate_types;
+
+        if constexpr (std::is_same<T, std::string>::value)
+        {
+            vcc_gate_types = m_netlist->get_gate_library()->get_vcc_gate_types();
+            gnd_gate_types = m_netlist->get_gate_library()->get_gnd_gate_types();
+        }
+        else
+        {
+            for (const auto& [name, gt] : m_netlist->get_gate_library()->get_vcc_gate_types())
+            {
+                vcc_gate_types.emplace(core_strings::from_std_string<T>(name), gt);
+            }
+
+            for (const auto& [name, gt] : m_netlist->get_gate_library()->get_gnd_gate_types())
+            {
+                gnd_gate_types.emplace(core_strings::from_std_string<T>(name), gt);
+            }
+        }
+
         // process instances i.e. gates or other entities
         for (const auto& [inst_name, inst] : e.get_instances())
         {
@@ -1198,6 +1219,16 @@ private:
 
                 module->assign_gate(new_gate);
                 container = new_gate.get();
+
+                // if gate is a global type, register it as such
+                if (vcc_gate_types.find(inst_type) != vcc_gate_types.end() && !new_gate->mark_vcc_gate())
+                {
+                    return nullptr;
+                }
+                if (gnd_gate_types.find(inst_type) != gnd_gate_types.end() && !new_gate->mark_gnd_gate())
+                {
+                    return nullptr;
+                }
 
                 // cache pin types
                 std::vector<T> input_pins;
