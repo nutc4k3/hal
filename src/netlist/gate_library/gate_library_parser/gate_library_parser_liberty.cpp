@@ -374,8 +374,7 @@ std::optional<gate_library_parser_liberty::pin_group> gate_library_parser_libert
             }
             else
             {
-                log_error("liberty_parser", "invalid pin direction '{}' near line {}", direction_str, pin_str.peek().number);
-                return std::nullopt;
+                log_warning("liberty_parser", "could not handle pin direction '{}' near line {}, ignoring pin", direction_str, pin_str.peek().number);
             }
             pin_str.consume(";", true);
         }
@@ -398,12 +397,6 @@ std::optional<gate_library_parser_liberty::pin_group> gate_library_parser_libert
             pin_str.consume(";", true);
         }
     } while (pin_str.remaining() > 0);
-
-    if (pin.direction == pin_direction::UNKNOWN)
-    {
-        log_error("liberty_parser", "no pin direction given near line {}", pin.line_number);
-        return std::nullopt;
-    }
 
     return pin;
 }
@@ -1099,7 +1092,7 @@ std::map<std::string, std::string>
                 }
                 else
                 {
-                    log_warning("liberty_parser", "cannot deal with bus '{}' in function '{}' near line {}, ignoring function.", it->first, function, it->second.line_number);
+                    log_warning("liberty_parser", "could not handle bus '{}' in function '{}' near line {}, ignoring function.", it->first, function, it->second.line_number);
                     return {};
                 }
             }
@@ -1148,7 +1141,7 @@ std::string gate_library_parser_liberty::prepare_pin_function(const std::map<std
             }
             else
             {
-                log_warning("liberty_parser", "cannot deal with bus '{}' in function '{}' near line {}, ignoring function.", it->first, function, it->second.line_number);
+                log_warning("liberty_parser", "could not handle bus '{}' in function '{}' near line {}, ignoring function.", it->first, function, it->second.line_number);
                 return "";
             }
         }
