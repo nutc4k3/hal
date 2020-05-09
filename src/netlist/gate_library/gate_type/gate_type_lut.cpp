@@ -16,6 +16,7 @@ bool gate_type_lut::do_compare(const gate_type& other) const
         equal = m_config_data_category == gt->get_config_data_category();
         equal &= m_config_data_identifier == gt->get_config_data_identifier();
         equal &= m_ascending == gt->is_config_data_ascending_order();
+        equal &= m_output_from_init_string_pins == gt->get_output_from_init_string_pins();
     }
 
     return equal;
