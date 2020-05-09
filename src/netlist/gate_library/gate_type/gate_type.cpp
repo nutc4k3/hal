@@ -135,12 +135,27 @@ void gate_type::add_output_pin_group(std::string group_name, std::vector<u32> ra
 
 void gate_type::add_boolean_function(std::string pin_name, boolean_function bf)
 {
+    if (const auto& it = std::find(m_output_pins.begin(), m_output_pins.end(), pin_name); it == m_output_pins.end())
+    {
+        log_warning("gate_type", "pin '{}' of gate type '{}' is not an output pin, ignoring boolean function", pin_name, m_name);
+        return;
+    }
+
     m_functions.emplace(pin_name, bf);
 }
 
 void gate_type::add_boolean_functions(const std::map<std::string, boolean_function>& functions)
 {
-    m_functions.insert(functions.begin(), functions.end());
+    for (const auto& function : functions)
+    {
+        if (const auto& it = std::find(m_output_pins.begin(), m_output_pins.end(), function.first); it == m_output_pins.end())
+        {
+            log_warning("gate_type", "pin '{}' of gate type '{}' is not an output pin, ignoring boolean function", function.first, m_name);
+            continue;
+        }
+
+        m_functions.insert(function);
+    }
 }
 
 std::string gate_type::get_name() const
