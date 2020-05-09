@@ -383,8 +383,8 @@ bool hdl_parser_vhdl::parse_attribute()
         }
         else
         {
-            log_error("hdl_parser", "invalid attribute class '{}' in line {}", attribute_class.string, line_number);
-            return false;
+            log_warning("hdl_parser", "unsupported attribute class '{}' in line {}, ignoring attribute", attribute_class.string, line_number);
+            return true;
         }
 
         attribute_buffer[target_class].emplace(attribute_target,
@@ -942,27 +942,40 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
     {
         auto signal_name_token = part_str.consume();
         i32 line_number        = signal_name_token.number;
-        auto signal_name       = signal_name_token;
+        auto signal_name       = signal_name_token.string;
         std::vector<std::vector<u32>> ranges;
         bool is_binary      = false;
         bool is_bound_known = true;
 
         // (2) NUMBER
-        if (core_utils::starts_with_t(signal_name.string, core_strings::case_insensitive_string("b\"")) || core_utils::starts_with_t(signal_name.string, core_strings::case_insensitive_string("o\""))
-            || core_utils::starts_with_t(signal_name.string, core_strings::case_insensitive_string("x\"")))
+        if (core_utils::starts_with_t(signal_name, core_strings::case_insensitive_string("\"")) || core_utils::starts_with_t(signal_name, core_strings::case_insensitive_string("b\""))
+            || core_utils::starts_with_t(signal_name, core_strings::case_insensitive_string("o\"")) || core_utils::starts_with_t(signal_name, core_strings::case_insensitive_string("x\"")))
         {
             if (is_left_half)
             {
-                log_error("hdl_parser", "numeric value {} not allowed at this position in line {}", signal_name.string, line_number);
+                log_error("hdl_parser", "numeric value {} not allowed at this position in line {}", signal_name, line_number);
                 return std::nullopt;
             }
 
             signal_name = get_bin_from_literal(signal_name_token);
-            if (signal_name.string.empty())
+            if (signal_name.empty())
             {
                 // error printed in subfunction
                 return std::nullopt;
             }
+
+            ranges    = {};
+            is_binary = true;
+        }
+        else if (signal_name == "'0'" || signal_name == "'1'")
+        {
+            if (is_left_half)
+            {
+                log_error("hdl_parser", "numeric value {} not allowed at this position in line {}", signal_name, line_number);
+                return std::nullopt;
+            }
+
+            signal_name = signal_name.substr(1, 1);
 
             ranges    = {};
             is_binary = true;
@@ -1004,7 +1017,7 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
                     }
                     else
                     {
-                        log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}", signal_name.string, line_number);
+                        log_error("hdl_parser", "signal name '{}' is invalid in assignment in line {}", signal_name, line_number);
                         return std::nullopt;
                     }
                 }
@@ -1045,8 +1058,18 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
 
     core_strings::case_insensitive_string res;
 
-    auto prefix = value[0];
-    auto number = value.substr(2, value.find('\"') - 2);
+    char prefix;
+    core_strings::case_insensitive_string number;
+    if (value[0] != '\"')
+    {
+        prefix = std::tolower(value[0]);
+        number = value.substr(2, value.find('\"') - 2);
+    }
+    else
+    {
+        prefix = 'b';
+        number = value.substr(1, value.find('\"') - 2);
+    }
 
     // parse number literal
     switch (prefix)
@@ -1115,8 +1138,19 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
 
     u32 base;
 
-    auto prefix = value[0];
-    auto number = value.substr(2, value.find('\"') - 2);
+    char prefix;
+    core_strings::case_insensitive_string number;
+    if (value[0] != '\"')
+    {
+        prefix = std::tolower(value[0]);
+        number = value.substr(2, value.find('\"') - 2);
+    }
+    else
+    {
+        prefix = 'b';
+        number = value.substr(1, value.find('\"') - 2);
+    }
+
     i32 len;
 
     // select base
