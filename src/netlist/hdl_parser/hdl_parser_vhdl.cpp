@@ -1106,7 +1106,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
             break;
         }
 
-        case 'h': {
+        case 'x': {
             for (const auto& c : number)
             {
                 if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
@@ -1180,7 +1180,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
             break;
         }
 
-        case 'h': {
+        case 'x': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); }))
             {
                 log_error("hdl_parser", "invalid character within hexadecimal number literal {} in line {}", value, line_number);
