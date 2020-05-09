@@ -1356,7 +1356,7 @@ private:
 
         for (const auto& bin_value : s.get_name())
         {
-            res.push_back(T(1, bin_value));
+            res.push_back("'" + T(1, bin_value) + "'");
         }
 
         return res;
