@@ -1,5 +1,7 @@
 #include "netlist/gate_library/gate_type/gate_type.h"
 
+#include "core/log.h"
+
 gate_type::gate_type(const std::string& name)
 {
     static u32 next_id = 1;
@@ -49,6 +51,12 @@ bool gate_type::do_compare(const gate_type& other) const
 
 void gate_type::add_input_pin(std::string pin_name)
 {
+    if (const auto& it = std::find(m_input_pins.begin(), m_input_pins.end(), pin_name); it != m_input_pins.end())
+    {
+        log_warning("gate_type", "input pin with name '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
+        return;
+    }
+
     m_input_pins.push_back(pin_name);
     m_input_pin_groups.emplace(pin_name, std::vector<u32>(0));
 }
@@ -57,6 +65,12 @@ void gate_type::add_input_pins(const std::vector<std::string>& pin_names)
 {
     for (const auto& pin_name : pin_names)
     {
+        if (const auto& it = std::find(m_input_pins.begin(), m_input_pins.end(), pin_name); it != m_input_pins.end())
+        {
+            log_warning("gate_type", "input pin with name '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
+            continue;
+        }
+
         m_input_pins.push_back(pin_name);
         m_input_pin_groups.emplace(pin_name, std::vector<u32>(0));
     }
@@ -64,6 +78,12 @@ void gate_type::add_input_pins(const std::vector<std::string>& pin_names)
 
 void gate_type::add_input_pin_group(std::string group_name, std::vector<u32> range)
 {
+    if (const auto& it = m_input_pin_groups.find(group_name); it != m_input_pin_groups.end())
+    {
+        log_warning("gate_type", "input pin group with name '{}' does already exist for gate type '{}', ignoring group", group_name, m_name);
+        return;
+    }
+
     m_input_pin_groups.emplace(group_name, range);
     for (const auto& index : range)
     {
@@ -73,6 +93,12 @@ void gate_type::add_input_pin_group(std::string group_name, std::vector<u32> ran
 
 void gate_type::add_output_pin(std::string pin_name)
 {
+    if (const auto& it = std::find(m_output_pins.begin(), m_output_pins.end(), pin_name); it != m_output_pins.end())
+    {
+        log_warning("gate_type", "output pin with name '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
+        return;
+    }
+
     m_output_pins.push_back(pin_name);
     m_output_pin_groups.emplace(pin_name, std::vector<u32>(0));
 }
@@ -81,6 +107,12 @@ void gate_type::add_output_pins(const std::vector<std::string>& pin_names)
 {
     for (const auto& pin_name : pin_names)
     {
+        if (const auto& it = std::find(m_output_pins.begin(), m_output_pins.end(), pin_name); it != m_output_pins.end())
+        {
+            log_warning("gate_type", "output pin with name '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
+            continue;
+        }
+
         m_output_pins.push_back(pin_name);
         m_output_pin_groups.emplace(pin_name, std::vector<u32>(0));
     }
@@ -88,6 +120,12 @@ void gate_type::add_output_pins(const std::vector<std::string>& pin_names)
 
 void gate_type::add_output_pin_group(std::string group_name, std::vector<u32> range)
 {
+    if (const auto& it = m_output_pin_groups.find(group_name); it != m_output_pin_groups.end())
+    {
+        log_warning("gate_type", "output pin group with name '{}' does already exist for gate type '{}', ignoring group", group_name, m_name);
+        return;
+    }
+
     m_output_pin_groups.emplace(group_name, range);
     for (const auto& index : range)
     {
