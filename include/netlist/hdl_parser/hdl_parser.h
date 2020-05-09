@@ -999,13 +999,13 @@ private:
         {
             if (!module->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
             {
-                log_error("hdl_parser",
-                          "could not set data for entity '{}' in line {}: key: {}, value_data_type: {}, value: {}",
-                          e.get_name(),
-                          e.get_line_number(),
-                          std::get<0>(attr),
-                          std::get<1>(attr),
-                          std::get<2>(attr));
+                log_warning("hdl_parser",
+                            "could not set data for entity '{}' in line {}: key: {}, value_data_type: {}, value: {}",
+                            e.get_name(),
+                            e.get_line_number(),
+                            std::get<0>(attr),
+                            std::get<1>(attr),
+                            std::get<2>(attr));
             }
         }
 
@@ -1046,13 +1046,13 @@ private:
                 {
                     if (!new_net->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
                     {
-                        log_error("hdl_parser",
-                                  "could not set data for signal '{}' in line {}: key: {}, value_data_type: {}, value: {}",
-                                  signal_name,
-                                  entity_signals.at(signal_name).get_line_number(),
-                                  std::get<0>(attr),
-                                  std::get<1>(attr),
-                                  std::get<2>(attr));
+                        log_warning("hdl_parser",
+                                    "could not set data for signal '{}' in line {}: key: {}, value_data_type: {}, value: {}",
+                                    signal_name,
+                                    entity_signals.at(signal_name).get_line_number(),
+                                    std::get<0>(attr),
+                                    std::get<1>(attr),
+                                    std::get<2>(attr));
                     }
                 }
             }
@@ -1294,30 +1294,28 @@ private:
             {
                 if (!container->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
                 {
-                    log_error("hdl_parser",
-                              "could not set data for instance '{}' in line {}: key: {}, value_data_type: {}, value: {}",
-                              inst_name,
-                              inst.get_line_number(),
-                              std::get<0>(attr),
-                              std::get<1>(attr),
-                              std::get<2>(attr));
+                    log_warning("hdl_parser",
+                                "could not set data for instance '{}' in line {}: key: {}, value_data_type: {}, value: {}",
+                                inst_name,
+                                inst.get_line_number(),
+                                std::get<0>(attr),
+                                std::get<1>(attr),
+                                std::get<2>(attr));
                 }
             }
 
             // process generics
             for (auto [generic_name, generic] : inst.get_generic_assignments())
             {
-                // store generic information on gate
                 if (!container->set_data("generic", generic_name, generic.first, generic.second))
                 {
-                    log_error("hdl_parser",
-                              "could not set data for instance '{}' in line {}: key: {}, value_data_type: {}, value: {}",
-                              inst_name,
-                              inst.get_line_number(),
-                              generic_name,
-                              generic.first,
-                              generic.second);
-                    return nullptr;
+                    log_warning("hdl_parser",
+                                "could not set data for instance '{}' in line {}: key: {}, value_data_type: {}, value: {}",
+                                inst_name,
+                                inst.get_line_number(),
+                                generic_name,
+                                generic.first,
+                                generic.second);
                 }
             }
         }
