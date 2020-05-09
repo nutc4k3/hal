@@ -503,6 +503,7 @@ bool hdl_parser_verilog::parse_generic_assign(instance& inst)
         }
         else if (core_utils::is_floating_point(rhs))
         {
+            value     = rhs;
             data_type = "floating_point";
         }
         else if (rhs.string[0] == '\"' && rhs.string.back() == '\"')
@@ -805,7 +806,10 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
     }
     else
     {
-        len    = std::stoi(value.substr(0, value.find('\'')));
+        if (value.at(0) != '\'')
+        {
+            len = std::stoi(value.substr(0, value.find('\'')));
+        }
         prefix = value.substr(value.find('\'') + 1, 1);
         number = value.substr(value.find('\'') + 2);
     }
@@ -890,9 +894,13 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
         }
     }
 
-    for (i32 i = 0; i < len - (i32)res.size(); i++)
+    if (len != -1)
     {
-        res = "0" + res;
+        // fill with '0'
+        for (i32 i = 0; i < len - (i32)res.size(); i++)
+        {
+            res = "0" + res;
+        }
     }
 
     return res;
@@ -903,7 +911,7 @@ std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_t
     auto line_number  = value_token.number;
     std::string value = core_utils::to_lower(core_utils::replace(value_token, "_", ""));
 
-    i32 len;
+    i32 len = -1;
     std::string prefix;
     std::string number;
     u32 base;
@@ -912,13 +920,15 @@ std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_t
     // base specified?
     if (value.find('\'') == std::string::npos)
     {
-        len    = -1;
         prefix = "d";
         number = value;
     }
     else
     {
-        len    = std::stoi(value.substr(0, value.find('\'')));
+        if (value.at(0) != '\'')
+        {
+            len = std::stoi(value.substr(0, value.find('\'')));
+        }
         prefix = value.substr(value.find('\'') + 1, 1);
         number = value.substr(value.find('\'') + 2);
     }
@@ -977,7 +987,15 @@ std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_t
     }
 
     std::stringstream ss;
-    ss << std::setfill('0') << std::setw((len + 3) / 4) << std::hex << stoull(number, 0, base);
+    if (len != -1)
+    {
+        // fill with '0'
+        ss << std::setfill('0') << std::setw((len + 3) / 4) << std::hex << stoull(number, 0, base);
+    }
+    else
+    {
+        ss << std::hex << stoull(number, 0, base);
+    }
     return ss.str();
 }
 
