@@ -130,19 +130,21 @@ TEST_END
  *
  * Functions: parse
  */
-TEST_F(hdl_parser_verilog_test, check_whitespace_chaos){TEST_START{std::stringstream input("module top(net_global_in,net_global_out);input net_global_in;\n"
-                                                                                           "  output net_global_out;wire net_0;wire net_1;INV gate_0 (\n"
-                                                                                           "  .\\I (net_global_in),\n"
-                                                                                           "\n"
-                                                                                           " \t.\\O (net_0 )\n"
-                                                                                           " );\n"
-                                                                                           "AND2 gate_1 (.\\I0\n\t"
-                                                                                           "  (\n"
-                                                                                           "    net_global_in\n"
-                                                                                           "   \t)\n"
-                                                                                           "    ,\n"
-                                                                                           "  .\\I1 (net_global_in),.\\O (net_1));\n"
-                                                                                           "AND3 gate_2 (.\\I0 (net_0 ),.\\I1 (net_1 ),.\\O (net_global_out ));endmodule");
+TEST_F(hdl_parser_verilog_test, check_whitespace_chaos){
+
+    TEST_START{std::stringstream input("module top(net_global_in,net_global_out);input net_global_in;\n"
+                                       "  output net_global_out;wire net_0;wire net_1;INV gate_0 (\n"
+                                       "  .\\I (net_global_in),\n"
+                                       "\n"
+                                       " \t.\\O (net_0 )\n"
+                                       " );\n"
+                                       "AND2 gate_1 (.\\I0\n\t"
+                                       "  (\n"
+                                       "    net_global_in\n"
+                                       "   \t)\n"
+                                       "    ,\n"
+                                       "  .\\I1 (net_global_in),.\\O (net_1));\n"
+                                       "AND3 gate_2 (.\\I0 (net_0 ),.\\I1 (net_1 ),.\\O (net_global_out ));endmodule");
 hdl_parser_verilog verilog_parser(input);
 std::shared_ptr<netlist> nl = verilog_parser.parse_and_instantiate(g_lib_name);
 
@@ -206,26 +208,28 @@ TEST_END
  *
  * Functions: parse
  */
-TEST_F(hdl_parser_verilog_test, check_generic_map){TEST_START{// Store an instance of all possible data types in one gate
-                                                              std::stringstream input("module top ("
-                                                                                      "  global_in,"
-                                                                                      "  global_out"
-                                                                                      " ) ;"
-                                                                                      "  input global_in ;"
-                                                                                      "  output global_out ;"
-                                                                                      "INV #("
-                                                                                      ".key_integer(1234),"
-                                                                                      ".key_floating_point(1.234),"
-                                                                                      ".key_string(\"test_string\"),"
-                                                                                      ".key_bit_vector_hex('habc),"    // All values are 'ABC' in hex
-                                                                                      ".key_bit_vector_dec('d2748),"
-                                                                                      ".key_bit_vector_oct('o5274),"
-                                                                                      ".key_bit_vector_bin('b1010_1011_1100)) "
-                                                                                      "gate_0 ("
-                                                                                      "  .\\I (global_in ),"
-                                                                                      "  .\\O (global_out )"
-                                                                                      " ) ;"
-                                                                                      "endmodule");
+TEST_F(hdl_parser_verilog_test, check_generic_map){
+
+    TEST_START{// Store an instance of all possible data types in one gate
+               std::stringstream input("module top ("
+                                       "  global_in,"
+                                       "  global_out"
+                                       " ) ;"
+                                       "  input global_in ;"
+                                       "  output global_out ;"
+                                       "INV #("
+                                       ".key_integer(1234),"
+                                       ".key_floating_point(1.234),"
+                                       ".key_string(\"test_string\"),"
+                                       ".key_bit_vector_hex('habc),"    // All values are 'ABC' in hex
+                                       ".key_bit_vector_dec('d2748),"
+                                       ".key_bit_vector_oct('o5274),"
+                                       ".key_bit_vector_bin('b1010_1011_1100)) "
+                                       "gate_0 ("
+                                       "  .\\I (global_in ),"
+                                       "  .\\O (global_out )"
+                                       " ) ;"
+                                       "endmodule");
 hdl_parser_verilog verilog_parser(input);
 std::shared_ptr<netlist> nl = verilog_parser.parse_and_instantiate(g_lib_name);
 
@@ -236,7 +240,7 @@ std::shared_ptr<gate> gate_0 = *nl->get_gates(gate_filter("INV", "gate_0")).begi
 
 // Integers are stored in their hex representation
 EXPECT_EQ(gate_0->get_data_by_key("generic", "key_integer"), std::make_tuple("integer", "1234"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_floating_point"), std::make_tuple("floating_point", "1.234"));    // ISSUE: output: ("integer", "1")
+EXPECT_EQ(gate_0->get_data_by_key("generic", "key_floating_point"), std::make_tuple("floating_point", "1.234"));
 EXPECT_EQ(gate_0->get_data_by_key("generic", "key_string"), std::make_tuple("string", "test_string"));
 EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_hex"), std::make_tuple("bit_vector", "abc"));
 EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_dec"), std::make_tuple("bit_vector", "abc"));
@@ -448,15 +452,17 @@ TEST_F(hdl_parser_verilog_test, check_net_vectors)
  *
  * Functions: parse
  */
-TEST_F(hdl_parser_verilog_test, check_gnd_vcc_gates){TEST_START{// Add a global_gnd
-                                                                std::stringstream input("module top ("
-                                                                                        "  global_out"
-                                                                                        " ) ;"
-                                                                                        "  output global_out ;"
-                                                                                        "GND g_gnd_gate ("
-                                                                                        "  .\\O (global_out )"
-                                                                                        " ) ;"
-                                                                                        "endmodule");
+TEST_F(hdl_parser_verilog_test, check_gnd_vcc_gates){
+
+    TEST_START{// Add a global_gnd
+               std::stringstream input("module top ("
+                                       "  global_out"
+                                       " ) ;"
+                                       "  output global_out ;"
+                                       "GND g_gnd_gate ("
+                                       "  .\\O (global_out )"
+                                       " ) ;"
+                                       "endmodule");
 test_def::capture_stdout();
 hdl_parser_verilog verilog_parser(input);
 std::shared_ptr<netlist> nl = verilog_parser.parse_and_instantiate(g_lib_name);
@@ -562,52 +568,54 @@ TEST_END
  *
  * Functions: parse
  */
-TEST_F(hdl_parser_verilog_test, check_multiple_entities){TEST_START{// Create a new entity with an attribute that is used once by the main entity
-                                                                    /*                               ---------------------------------------------.
+TEST_F(hdl_parser_verilog_test, check_multiple_entities){
+
+    TEST_START{// Create a new entity with an attribute that is used once by the main entity
+               /*                               ---------------------------------------------.
              *                              | child_mod                                   |
              *                              |                                             |
              *  global_in ---=| gate_0 |=---=---=| gate_0_child |=---=| gate_1_child |=---=---=| gate_1 |=--- global_out
              *                              |                                             |
              *                              '---------------------------------------------'
              */
-                                                                    std::stringstream input("module ENT_CHILD ("
-                                                                                            "  child_in,"
-                                                                                            "  child_out"
-                                                                                            " ) ;"
-                                                                                            "  input child_in ;"
-                                                                                            "  output child_out ;"
-                                                                                            "  wire net_0_child ;"
-                                                                                            "INV gate_0_child ("
-                                                                                            "  .\\I (child_in ),"
-                                                                                            "  .\\O (net_0_child )"
-                                                                                            " ) ;"
-                                                                                            "INV gate_1_child ("
-                                                                                            "  .\\I (net_0_child ),"
-                                                                                            "  .\\O (child_out )"
-                                                                                            " ) ;"
-                                                                                            "endmodule"
-                                                                                            "\n"
-                                                                                            "module ENT_TO ("
-                                                                                            "  net_global_in,"
-                                                                                            "  net_global_out"
-                                                                                            " ) ;"
-                                                                                            "  input net_global_in ;"
-                                                                                            "  output net_global_out ;"
-                                                                                            "  wire net_0 ;"
-                                                                                            "  wire net_1 ;"
-                                                                                            "INV gate_0 ("
-                                                                                            "  .\\I (net_global_in ),"
-                                                                                            "  .\\O (net_0 )"
-                                                                                            " ) ;"
-                                                                                            "ENT_CHILD child_mod ("
-                                                                                            "  .\\child_in (net_0 ),"
-                                                                                            "  .\\child_out (net_1 )"
-                                                                                            " ) ;"
-                                                                                            "INV gate_1 ("
-                                                                                            "  .\\I (net_1 ), "
-                                                                                            "  .\\O (net_global_out )"
-                                                                                            " ) ;"
-                                                                                            "endmodule");
+               std::stringstream input("module ENT_CHILD ("
+                                       "  child_in,"
+                                       "  child_out"
+                                       " ) ;"
+                                       "  input child_in ;"
+                                       "  output child_out ;"
+                                       "  wire net_0_child ;"
+                                       "INV gate_0_child ("
+                                       "  .\\I (child_in ),"
+                                       "  .\\O (net_0_child )"
+                                       " ) ;"
+                                       "INV gate_1_child ("
+                                       "  .\\I (net_0_child ),"
+                                       "  .\\O (child_out )"
+                                       " ) ;"
+                                       "endmodule"
+                                       "\n"
+                                       "module ENT_TO ("
+                                       "  net_global_in,"
+                                       "  net_global_out"
+                                       " ) ;"
+                                       "  input net_global_in ;"
+                                       "  output net_global_out ;"
+                                       "  wire net_0 ;"
+                                       "  wire net_1 ;"
+                                       "INV gate_0 ("
+                                       "  .\\I (net_global_in ),"
+                                       "  .\\O (net_0 )"
+                                       " ) ;"
+                                       "ENT_CHILD child_mod ("
+                                       "  .\\child_in (net_0 ),"
+                                       "  .\\child_out (net_1 )"
+                                       " ) ;"
+                                       "INV gate_1 ("
+                                       "  .\\I (net_1 ), "
+                                       "  .\\O (net_global_out )"
+                                       " ) ;"
+                                       "endmodule");
 hdl_parser_verilog verilog_parser(input);
 std::shared_ptr<netlist> nl = verilog_parser.parse_and_instantiate(g_lib_name);
 
@@ -879,7 +887,6 @@ TEST_F(hdl_parser_verilog_test, check_direct_assignment)
     TEST_START
     create_temp_gate_lib();
     {
-        // (ISSUE: global input property is not propagated to net_master)
         // Build up a master-slave hierarchy as follows: (NOTE: Whats up with global inputs?)
         /*                                  .--- net_slave_1 (is global input)
              *   net_master <--- net_slave_0 <--+
@@ -930,8 +937,8 @@ TEST_F(hdl_parser_verilog_test, check_direct_assignment)
         EXPECT_EQ(g_1->get_fan_in_net("I1"), net_master);
         EXPECT_EQ(g_1->get_fan_in_net("I2"), net_master);
 
-        // Check that net_master becomes also a global input (ISSUE: global input property is not propagated to net_master)
-        //EXPECT_TRUE(net_master->is_global_input_net());
+        // Check that net_master becomes also a global input
+        EXPECT_TRUE(net_master->is_global_input_net());
     }
     // -- Verilog Specific Tests
     {
@@ -1272,38 +1279,40 @@ TEST_END
  *
  * Functions: parse
  */
-TEST_F(hdl_parser_verilog_test, check_one_line_multiple_nets){TEST_START{// Declare multiple wire vectors in one line
-                                                                         std::stringstream input("module top ("
-                                                                                                 "  global_in,"
-                                                                                                 "  global_out"
-                                                                                                 " ) ;"
-                                                                                                 "  input global_in ;"
-                                                                                                 "  output global_out ;"
-                                                                                                 "  wire [0:1] net_vec_0, net_vec_1 ;"    // <- !!!
-                                                                                                 "AND4 gate_0 ("
-                                                                                                 "  .\\I0 (net_vec_0[0] ),"
-                                                                                                 "  .\\I1 (net_vec_0[1] ),"
-                                                                                                 "  .\\I2 (net_vec_1[0] ),"
-                                                                                                 "  .\\I3 (net_vec_1[1] ),"
-                                                                                                 "  .\\O (global_out )"
-                                                                                                 " ) ;"
-                                                                                                 "INV gate_1 ("
-                                                                                                 "  .\\I (global_in ),"
-                                                                                                 "  .\\O (net_vec_0[0] )"
-                                                                                                 ") ;"
-                                                                                                 "INV gate_2 ("
-                                                                                                 "  .\\I (global_in ),"
-                                                                                                 "  .\\O (net_vec_0[1] )"
-                                                                                                 ") ;"
-                                                                                                 "INV gate_3 ("
-                                                                                                 "  .\\I (global_in ),"
-                                                                                                 "  .\\O (net_vec_1[0] )"
-                                                                                                 ") ;"
-                                                                                                 "INV gate_4 ("
-                                                                                                 "  .\\I (global_in ),"
-                                                                                                 "  .\\O (net_vec_1[1] )"
-                                                                                                 ") ;"
-                                                                                                 "endmodule");
+TEST_F(hdl_parser_verilog_test, check_one_line_multiple_nets){
+
+    TEST_START{// Declare multiple wire vectors in one line
+               std::stringstream input("module top ("
+                                       "  global_in,"
+                                       "  global_out"
+                                       " ) ;"
+                                       "  input global_in ;"
+                                       "  output global_out ;"
+                                       "  wire [0:1] net_vec_0, net_vec_1 ;"    // <- !!!
+                                       "AND4 gate_0 ("
+                                       "  .\\I0 (net_vec_0[0] ),"
+                                       "  .\\I1 (net_vec_0[1] ),"
+                                       "  .\\I2 (net_vec_1[0] ),"
+                                       "  .\\I3 (net_vec_1[1] ),"
+                                       "  .\\O (global_out )"
+                                       " ) ;"
+                                       "INV gate_1 ("
+                                       "  .\\I (global_in ),"
+                                       "  .\\O (net_vec_0[0] )"
+                                       ") ;"
+                                       "INV gate_2 ("
+                                       "  .\\I (global_in ),"
+                                       "  .\\O (net_vec_0[1] )"
+                                       ") ;"
+                                       "INV gate_3 ("
+                                       "  .\\I (global_in ),"
+                                       "  .\\O (net_vec_1[0] )"
+                                       ") ;"
+                                       "INV gate_4 ("
+                                       "  .\\I (global_in ),"
+                                       "  .\\O (net_vec_1[1] )"
+                                       ") ;"
+                                       "endmodule");
 test_def::capture_stdout();
 hdl_parser_verilog verilog_parser(input);
 std::shared_ptr<netlist> nl = verilog_parser.parse_and_instantiate(g_lib_name);

@@ -240,7 +240,7 @@ TEST_END
  *
  * Functions: parse
  */
-TEST_F(hdl_parser_vhdl_test, DISABLED_check_generic_map){
+TEST_F(hdl_parser_vhdl_test, check_generic_map){
 
     TEST_START{// Store an instance of all possible data types in one gate
                std::stringstream input("-- Device\t: device_name\n"
@@ -1118,8 +1118,8 @@ EXPECT_EQ(g_1->get_fan_in_net("I0"), net_master);
 EXPECT_EQ(g_1->get_fan_in_net("I1"), net_master);
 EXPECT_EQ(g_1->get_fan_in_net("I2"), net_master);
 
-// Check that net_master becomes also a global input (ISSUE: global input property is not propagated to net_master)
-//EXPECT_TRUE(net_master->is_global_input_net());
+// Check that net_master becomes also a global input
+EXPECT_TRUE(net_master->is_global_input_net());
 
 // VHDL specific: Check the net attribute propagation
 EXPECT_EQ(net_master->get_data_by_key("vhdl_attribute", "master_attr"), std::make_tuple("string", "master_attr"));
