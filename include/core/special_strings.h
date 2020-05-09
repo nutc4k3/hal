@@ -63,11 +63,15 @@ namespace core_strings
 
         static const char* find(const char* s, int n, char a)
         {
-            while (n-- > 0 && toupper(*s) != toupper(a))
+            while (n-- > 0)
             {
+                if (toupper(*s) == toupper(a))
+                {
+                    return s;
+                }
                 ++s;
             }
-            return s;
+            return nullptr;
         }
     };
     using case_insensitive_string = std::basic_string<char, case_insensitive_char_traits>;
