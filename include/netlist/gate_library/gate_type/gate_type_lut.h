@@ -51,7 +51,7 @@ public:
      *
      * @param[in] output_pin - The name of the output string.
      */
-    void add_output_from_init_string_pin(const std::string& output_pin);
+    void add_output_from_init_string_pin(const std::string& pin_name);
 
     /**
      * Get the set of output pins that generate their output not from a boolean function but an initialization string.
