@@ -126,35 +126,31 @@ public:
                     // fill in port width
                     auto& entity_ports = entity_it->second.get_ports();
 
-                    for (auto& [port_name, assignment] : port_assignments)
+                    for (auto& [port, assignments] : port_assignments)
                     {
-                        if (!assignment.first.is_ranges_known())
+                        if (!port.is_ranges_known())
                         {
-                            if (auto port_it = entity_ports.find(port_name); port_it != entity_ports.end())
+                            if (auto port_it = entity_ports.find(port.get_name()); port_it != entity_ports.end())
                             {
-                                assignment.first.set_ranges(port_it->second.second.get_ranges());
+                                port.set_ranges(port_it->second.second.get_ranges());
 
-                                i32 left_size  = assignment.first.get_size();
+                                i32 left_size  = port.get_size();
                                 i32 right_size = 0;
-                                for (const auto& s : assignment.second)
+                                for (const auto& s : assignments)
                                 {
                                     right_size += s.get_size();
                                 }
 
                                 if (left_size != right_size)
                                 {
-                                    log_error("hdl_parser",
-                                              "port assignment width mismatch: left side has size {} and right side has size {} in line {}",
-                                              left_size,
-                                              right_size,
-                                              assignment.first.get_line_number());
+                                    log_error(
+                                        "hdl_parser", "port assignment width mismatch: left side has size {} and right side has size {} in line {}", left_size, right_size, port.get_line_number());
                                     return nullptr;
                                 }
                             }
                             else
                             {
-                                log_error(
-                                    "hdl_parser", "port '{}' is no valid port for instance '{}' of entity '{}' in line {}", port_name, inst_name, entity_it->first, assignment.first.get_line_number());
+                                log_error("hdl_parser", "port '{}' is no valid port for instance '{}' of entity '{}' in line {}", port.get_name(), inst_name, entity_it->first, port.get_line_number());
                                 return nullptr;
                             }
                         }
@@ -184,39 +180,35 @@ public:
                         }
                     }
 
-                    for (auto& [port_name, assignment] : port_assignments)
+                    for (auto& [port, assignments] : port_assignments)
                     {
-                        if (auto pin_it = pin_groups.find(port_name); pin_it != pin_groups.end())
+                        if (auto pin_it = pin_groups.find(port.get_name()); pin_it != pin_groups.end())
                         {
                             if (!pin_it->second.empty())
                             {
-                                assignment.first.set_ranges({pin_it->second});
+                                port.set_ranges({pin_it->second});
                             }
                             else
                             {
-                                assignment.first.set_ranges({});
+                                port.set_ranges({});
                             }
                         }
                         else
                         {
-                            log_error("hdl_parser", "pin '{}' is no valid pin for gate '{}' of type '{}' in line {}", port_name, inst_name, gate_it->first, assignment.first.get_line_number());
+                            log_error("hdl_parser", "pin '{}' is no valid pin for gate '{}' of type '{}' in line {}", port.get_name(), inst_name, gate_it->first, port.get_line_number());
                             return nullptr;
                         }
 
-                        i32 left_size  = assignment.first.get_size();
+                        i32 left_size  = port.get_size();
                         i32 right_size = 0;
-                        for (const auto& s : assignment.second)
+                        for (const auto& s : assignments)
                         {
                             right_size += s.get_size();
                         }
 
                         if (left_size != right_size)
                         {
-                            log_error("hdl_parser",
-                                      "port assignment width mismatch: port has width {} and assigned signal has width {} in line {}",
-                                      left_size,
-                                      right_size,
-                                      assignment.first.get_line_number());
+                            log_error("hdl_parser", "port assignment width mismatch: port has width {} and assigned signal has width {} in line {}", left_size, right_size, port.get_line_number());
                             return nullptr;
                         }
                     }
@@ -463,15 +455,15 @@ protected:
 
         void add_port_assignment(const signal& port, const std::vector<signal>& assignment)
         {
-            _port_assignments.emplace(port.get_name(), std::make_pair(port, assignment));
+            _port_assignments.push_back(std::make_pair(port, assignment));
         }
 
-        std::map<T, std::pair<signal, std::vector<signal>>>& get_port_assignments()
+        std::vector<std::pair<signal, std::vector<signal>>>& get_port_assignments()
         {
             return _port_assignments;
         }
 
-        const std::map<T, std::pair<signal, std::vector<signal>>>& get_port_assignments() const
+        const std::vector<std::pair<signal, std::vector<signal>>>& get_port_assignments() const
         {
             return _port_assignments;
         }
@@ -511,7 +503,7 @@ protected:
         T _name;
 
         // port assignments: port_name -> (port_signal, assignment_signals)
-        std::map<T, std::pair<signal, std::vector<signal>>> _port_assignments;
+        std::vector<std::pair<signal, std::vector<signal>>> _port_assignments;
 
         // generic assignments: generic_name -> (data_type, data_value)
         std::map<std::string, std::pair<std::string, std::string>> _generic_assignments;
@@ -1137,11 +1129,8 @@ private:
             std::vector<T> expanded_ports;
             std::vector<T> expanded_assignments;
 
-            for (const auto& port_assignments : inst.get_port_assignments())
+            for (const auto& [port, assignments] : inst.get_port_assignments())
             {
-                const auto& port        = port_assignments.second.first;
-                const auto& assignments = port_assignments.second.second;
-
                 std::vector<T> expanded_port = expand_signal(port);
                 std::move(expanded_port.begin(), expanded_port.end(), std::back_inserter(expanded_ports));
 
