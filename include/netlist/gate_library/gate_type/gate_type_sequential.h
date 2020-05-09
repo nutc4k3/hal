@@ -40,12 +40,12 @@ class gate_type_sequential : public gate_type
 public:
     enum class set_reset_behavior
     {
-        U = -1,    // not set
-        L = 0,
-        H = 1,
-        N = 2,
-        T = 3,
-        X = 4
+        U = 0,    // not set
+        L = 1,
+        H = 2,
+        N = 3,
+        T = 4,
+        X = 5
     };
 
     /**
