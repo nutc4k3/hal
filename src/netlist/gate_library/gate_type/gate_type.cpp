@@ -28,10 +28,13 @@ std::ostream& operator<<(std::ostream& os, const gate_type& gt)
 
 bool gate_type::operator==(const gate_type& other) const
 {
-    bool equal = m_name == other.get_name();
+    bool equal = m_id == other.get_id();
+    equal &= m_name == other.get_name();
     equal &= m_base_type == other.get_base_type();
     equal &= m_input_pins == other.get_input_pins();
+    equal &= m_input_pin_groups == other.get_input_pin_groups();
     equal &= m_output_pins == other.get_output_pins();
+    equal &= m_output_pin_groups == other.get_output_pin_groups();
     equal &= m_functions == other.get_boolean_functions();
     equal &= this->do_compare(other);
 
