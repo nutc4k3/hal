@@ -99,7 +99,7 @@ bool gate_library_parser_liberty::tokenize()
         }
     }
 
-    m_token_stream = token_stream(parsed_tokens, {"(", "{"}, {")", "}"});
+    m_token_stream = token_stream<std::string>(parsed_tokens, {"(", "{"}, {")", "}"});
     return true;
 }
 
@@ -239,14 +239,16 @@ bool gate_library_parser_liberty::parse_cell(token_stream<std::string>& str)
         auto next_token = cell_str.consume();
         if (next_token == "pin")
         {
-            if (!parse_pin(cell_str, cell))
+            auto pin = parse_pin(cell_str);
+            if (!pin.has_value())
             {
                 return false;
             }
+            cell.pins.push_back(pin.value());
         }
         else if (next_token == "bus")
         {
-            auto bus = parse_bus(cell_str, cell);
+            auto bus = parse_bus(cell_str);
             if (!bus.has_value())
             {
                 return false;
@@ -296,12 +298,11 @@ bool gate_library_parser_liberty::parse_cell(token_stream<std::string>& str)
     return true;
 }
 
-bool gate_library_parser_liberty::parse_pin(token_stream<std::string>& str, cell_group& cell, pin_direction direction, const std::string& pin_name)
+std::optional<gate_library_parser_liberty::pin_group> gate_library_parser_liberty::parse_pin(token_stream<std::string>& str, pin_direction direction, const std::string& external_pin_name)
 {
-    std::string function, x_function, z_function;
-    std::vector<std::string> names;
+    pin_group pin;
 
-    u32 line_number = str.peek().number;
+    pin.line_number = str.peek().number;
     str.consume("(", true);
     auto pin_names_str = str.extract_until(")", token_stream<std::string>::END_OF_STREAM, true, true);
     str.consume(")", true);
@@ -312,10 +313,10 @@ bool gate_library_parser_liberty::parse_pin(token_stream<std::string>& str, cell
     do
     {
         std::string name = pin_names_str.consume().string;
-        if (!pin_name.empty() && name != pin_name)
+        if (!external_pin_name.empty() && name != external_pin_name)
         {
             log_error("liberty_parser", "invalid pin name '{}' near line {}", name, pin_names_str.peek().number);
-            return false;
+            return std::nullopt;
         }
 
         if (pin_names_str.consume("["))
@@ -330,25 +331,27 @@ bool gate_library_parser_liberty::parse_pin(token_stream<std::string>& str, cell
                 for (int i = start; i != (end + dir); i += dir)
                 {
                     auto new_name = name + "(" + std::to_string(i) + ")";
-                    names.push_back(new_name);
+                    pin.pin_names.push_back(new_name);
                 }
             }
             else
             {
                 u32 index     = std::stoul(pin_names_str.consume().string);
                 auto new_name = name + "(" + std::to_string(index) + ")";
-                names.push_back(new_name);
+                pin.pin_names.push_back(new_name);
             }
 
             pin_names_str.consume("]", true);
         }
         else
         {
-            names.push_back(name);
+            pin.pin_names.push_back(name);
         }
 
         pin_names_str.consume(",", pin_names_str.remaining() > 0);
     } while (pin_names_str.remaining() > 0);
+
+    pin.direction = direction;
 
     do
     {
@@ -359,91 +362,56 @@ bool gate_library_parser_liberty::parse_pin(token_stream<std::string>& str, cell
             auto direction_str = pin_str.consume().string;
             if (direction_str == "input")
             {
-                direction = pin_direction::IN;
+                pin.direction = pin_direction::IN;
             }
             else if (direction_str == "output")
             {
-                direction = pin_direction::OUT;
+                pin.direction = pin_direction::OUT;
             }
             else if (direction_str == "inout")
             {
-                direction = pin_direction::INOUT;
+                pin.direction = pin_direction::INOUT;
             }
             else
             {
                 log_error("liberty_parser", "invalid pin direction '{}' near line {}", direction_str, pin_str.peek().number);
-                return false;
+                return std::nullopt;
             }
             pin_str.consume(";", true);
         }
         else if (next_token == "function")
         {
             pin_str.consume(":", true);
-            function = pin_str.consume().string;
+            pin.function = pin_str.consume().string;
             pin_str.consume(";", true);
         }
         else if (next_token == "x_function")
         {
             pin_str.consume(":", true);
-            x_function = pin_str.consume().string;
+            pin.x_function = pin_str.consume().string;
             pin_str.consume(";", true);
         }
         else if (next_token == "three_state")
         {
             pin_str.consume(":", true);
-            z_function = pin_str.consume().string;
+            pin.z_function = pin_str.consume().string;
             pin_str.consume(";", true);
         }
     } while (pin_str.remaining() > 0);
 
-    if (direction == pin_direction::UNKNOWN)
+    if (pin.direction == pin_direction::UNKNOWN)
     {
-        log_error("liberty_parser", "no pin direction given near line {}", line_number);
-        return false;
-    }
-    else if (pin_name.empty())
-    {
-        if (direction == pin_direction::IN || direction == pin_direction::INOUT)
-        {
-            cell.input_pins.insert(cell.input_pins.end(), names.begin(), names.end());
-        }
-
-        if (direction == pin_direction::OUT || direction == pin_direction::INOUT)
-        {
-            cell.output_pins.insert(cell.output_pins.end(), names.begin(), names.end());
-
-            if (!function.empty())
-            {
-                for (const auto& name : names)
-                {
-                    cell.functions[name] = function;
-                }
-            }
-
-            if (!x_function.empty())
-            {
-                for (const auto& name : names)
-                {
-                    cell.x_functions[name] = x_function;
-                }
-            }
-
-            if (!z_function.empty())
-            {
-                for (const auto& name : names)
-                {
-                    cell.z_functions[name] = z_function;
-                }
-            }
-        }
+        log_error("liberty_parser", "no pin direction given near line {}", pin.line_number);
+        return std::nullopt;
     }
 
-    return true;
+    return pin;
 }
 
-std::optional<gate_library_parser_liberty::bus_group> gate_library_parser_liberty::parse_bus(token_stream<std::string>& str, cell_group& cell)
+std::optional<gate_library_parser_liberty::bus_group> gate_library_parser_liberty::parse_bus(token_stream<std::string>& str)
 {
     bus_group bus;
+    std::vector<u32> range;
 
     bus.line_number = str.peek().number;
     str.consume("(", true);
@@ -462,7 +430,7 @@ std::optional<gate_library_parser_liberty::bus_group> gate_library_parser_libert
             auto bus_type_str = bus_str.consume().string;
             if (const auto& it = m_bus_types.find(bus_type_str); it != m_bus_types.end())
             {
-                bus.range = it->second.range;
+                range = it->second.range;
             }
             else
             {
@@ -496,32 +464,26 @@ std::optional<gate_library_parser_liberty::bus_group> gate_library_parser_libert
         }
         else if (next_token == "pin")
         {
-            if (!parse_pin(bus_str, cell, bus.direction, bus.name))
+            auto pin = parse_pin(bus_str, bus.direction, bus.name);
+            if (!pin.has_value())
             {
                 return std::nullopt;
             }
+            bus.pins.push_back(pin.value());
         }
     } while (bus_str.remaining() > 0);
 
-    for (const auto& index : bus.range)
+    for (const auto& index : range)
     {
-        bus.pin_names.push_back(bus.name + "(" + std::to_string(index) + ")");
+        auto pin_name = bus.name + "(" + std::to_string(index) + ")";
+        bus.pin_names.push_back(pin_name);
+        bus.index_to_pin_name.emplace(index, pin_name);
     }
 
     if (bus.direction == pin_direction::UNKNOWN)
     {
-        log_error("liberty_parser", "no pin direction given near line {}", bus.line_number);
+        log_error("liberty_parser", "no bus direction given near line {}", bus.line_number);
         return std::nullopt;
-    }
-
-    if (bus.direction == pin_direction::IN || bus.direction == pin_direction::INOUT)
-    {
-        cell.input_pins.insert(cell.input_pins.end(), bus.pin_names.begin(), bus.pin_names.end());
-    }
-
-    if (bus.direction == pin_direction::OUT || bus.direction == pin_direction::INOUT)
-    {
-        cell.output_pins.insert(cell.output_pins.end(), bus.pin_names.begin(), bus.pin_names.end());
     }
 
     return bus;
@@ -693,7 +655,7 @@ std::optional<gate_library_parser_liberty::lut_group> gate_library_parser_libert
 
     do
     {
-        auto next_token = str.consume();
+        auto next_token = lut_str.consume();
         if (next_token == "data_category")
         {
             lut_str.consume(":", true);
@@ -731,7 +693,36 @@ std::optional<gate_library_parser_liberty::lut_group> gate_library_parser_libert
 std::shared_ptr<gate_type> gate_library_parser_liberty::construct_gate_type(cell_group& cell)
 {
     std::shared_ptr<gate_type> gt;
-    std::map<std::string, std::string> tmp_functions;
+    std::vector<std::string> input_pins;
+    std::vector<std::string> output_pins;
+
+    // get input and output pins from pin groups
+    for (const auto& pin : cell.pins)
+    {
+        if (pin.direction == pin_direction::IN || pin.direction == pin_direction::INOUT)
+        {
+            input_pins.insert(input_pins.end(), pin.pin_names.begin(), pin.pin_names.end());
+        }
+
+        if (pin.direction == pin_direction::OUT || pin.direction == pin_direction::INOUT)
+        {
+            output_pins.insert(output_pins.end(), pin.pin_names.begin(), pin.pin_names.end());
+        }
+    }
+
+    // get input and output pins from bus groups
+    for (const auto& bus : cell.buses)
+    {
+        if (bus.second.direction == pin_direction::IN || bus.second.direction == pin_direction::INOUT)
+        {
+            input_pins.insert(input_pins.end(), bus.second.pin_names.begin(), bus.second.pin_names.end());
+        }
+
+        if (bus.second.direction == pin_direction::OUT || bus.second.direction == pin_direction::INOUT)
+        {
+            output_pins.insert(output_pins.end(), bus.second.pin_names.begin(), bus.second.pin_names.end());
+        }
+    }
 
     if (cell.type == gate_type::base_type::combinatorial)
     {
@@ -743,41 +734,76 @@ std::shared_ptr<gate_type> gate_library_parser_liberty::construct_gate_type(cell
 
         if (!cell.ff.clocked_on.empty())
         {
-            tmp_functions["clock"] = cell.ff.clocked_on;
+            cell.special_functions["clock"] = cell.ff.clocked_on;
         }
 
         if (!cell.ff.next_state.empty())
         {
-            tmp_functions["next_state"] = cell.ff.next_state;
+            cell.special_functions["next_state"] = cell.ff.next_state;
         }
 
         if (!cell.ff.preset.empty())
         {
-            tmp_functions["preset"] = cell.ff.preset;
+            cell.special_functions["preset"] = cell.ff.preset;
         }
 
         if (!cell.ff.clear.empty())
         {
-            tmp_functions["clear"] = cell.ff.clear;
+            cell.special_functions["clear"] = cell.ff.clear;
         }
 
         seq_gt->set_set_reset_behavior(cell.ff.special_behavior_var1, cell.ff.special_behavior_var2);
         seq_gt->set_init_data_category(cell.ff.data_category);
         seq_gt->set_init_data_identifier(cell.ff.data_identifier);
 
-        for (auto& [pin_name, bf_string] : cell.functions)
+        for (auto& pin : cell.pins)
         {
-            if (bf_string == cell.ff.state1)
+            if (pin.function == cell.ff.state1)
             {
-                seq_gt->add_state_output_pin(pin_name);
-                bf_string = "";
+                for (const auto& pin_name : pin.pin_names)
+                {
+                    seq_gt->add_state_output_pin(pin_name);
+                }
+
+                pin.function = "";
             }
-            else if (bf_string == cell.ff.state2)
+            else if (pin.function == cell.ff.state2)
             {
-                seq_gt->add_inverted_state_output_pin(pin_name);
-                bf_string = "";
+                for (const auto& pin_name : pin.pin_names)
+                {
+                    seq_gt->add_inverted_state_output_pin(pin_name);
+                }
+
+                pin.function = "";
             }
         }
+
+        for (auto& bus : cell.buses)
+        {
+            for (auto& pin : bus.second.pins)
+            {
+                if (pin.function == cell.ff.state1)
+                {
+                    for (const auto& pin_name : pin.pin_names)
+                    {
+                        seq_gt->add_state_output_pin(pin_name);
+                    }
+
+                    pin.function = "";
+                }
+                else if (pin.function == cell.ff.state2)
+                {
+                    for (const auto& pin_name : pin.pin_names)
+                    {
+                        seq_gt->add_inverted_state_output_pin(pin_name);
+                    }
+
+                    pin.function = "";
+                }
+            }
+        }
+
+        gt = seq_gt;
     }
     else if (cell.type == gate_type::base_type::latch)
     {
@@ -785,37 +811,70 @@ std::shared_ptr<gate_type> gate_library_parser_liberty::construct_gate_type(cell
 
         if (!cell.latch.enable.empty())
         {
-            tmp_functions["enable"] = cell.latch.enable;
+            cell.special_functions["enable"] = cell.latch.enable;
         }
 
         if (!cell.latch.data_in.empty())
         {
-            tmp_functions["data"] = cell.latch.data_in;
+            cell.special_functions["data"] = cell.latch.data_in;
         }
 
         if (!cell.latch.preset.empty())
         {
-            tmp_functions["preset"] = cell.latch.preset;
+            cell.special_functions["preset"] = cell.latch.preset;
         }
 
         if (!cell.latch.clear.empty())
         {
-            tmp_functions["clear"] = cell.latch.clear;
+            cell.special_functions["clear"] = cell.latch.clear;
         }
 
         seq_gt->set_set_reset_behavior(cell.latch.special_behavior_var1, cell.latch.special_behavior_var2);
 
-        for (auto& [pin_name, bf_string] : cell.functions)
+        for (auto& pin : cell.pins)
         {
-            if (bf_string == cell.latch.state1)
+            if (pin.function == cell.latch.state1)
             {
-                seq_gt->add_state_output_pin(pin_name);
-                bf_string = "";
+                for (const auto& pin_name : pin.pin_names)
+                {
+                    seq_gt->add_state_output_pin(pin_name);
+                }
+
+                pin.function = "";
             }
-            else if (bf_string == cell.latch.state2)
+            else if (pin.function == cell.latch.state2)
             {
-                seq_gt->add_inverted_state_output_pin(pin_name);
-                bf_string = "";
+                for (const auto& pin_name : pin.pin_names)
+                {
+                    seq_gt->add_inverted_state_output_pin(pin_name);
+                }
+
+                pin.function = "";
+            }
+        }
+
+        for (auto& bus : cell.buses)
+        {
+            for (auto& pin : bus.second.pins)
+            {
+                if (pin.function == cell.latch.state1)
+                {
+                    for (const auto& pin_name : pin.pin_names)
+                    {
+                        seq_gt->add_state_output_pin(pin_name);
+                    }
+
+                    pin.function = "";
+                }
+                else if (pin.function == cell.latch.state2)
+                {
+                    for (const auto& pin_name : pin.pin_names)
+                    {
+                        seq_gt->add_inverted_state_output_pin(pin_name);
+                    }
+
+                    pin.function = "";
+                }
             }
         }
 
@@ -829,35 +888,83 @@ std::shared_ptr<gate_type> gate_library_parser_liberty::construct_gate_type(cell
         lut_gt->set_config_data_identifier(cell.lut.data_identifier);
         lut_gt->set_config_data_ascending_order(cell.lut.data_direction == "ascending");
 
-        for (auto& [pin_name, bf_string] : cell.functions)
+        for (auto& pin : cell.pins)
         {
-            if (bf_string == cell.lut.name)
+            if (pin.function == cell.lut.name)
             {
-                lut_gt->add_output_from_init_string_pin(pin_name);
-                bf_string = "";
+                for (const auto& pin_name : pin.pin_names)
+                {
+                    lut_gt->add_output_from_init_string_pin(pin_name);
+                }
+
+                pin.function = "";
+            }
+        }
+
+        for (auto& bus : cell.buses)
+        {
+            for (auto& pin : bus.second.pins)
+            {
+                if (pin.function == cell.lut.name)
+                {
+                    for (const auto& pin_name : pin.pin_names)
+                    {
+                        lut_gt->add_output_from_init_string_pin(pin_name);
+                    }
+
+                    pin.function = "";
+                }
             }
         }
 
         gt = lut_gt;
     }
 
-    // TODO construct boolean functions
     if (!cell.buses.empty())
     {
-        for (const auto& bus : cell.buses)
-        {
-            prepare_bus_pin_functions(cell, cell.functions, bus.second);
-            prepare_bus_pin_functions(cell, cell.x_functions, bus.second);
-            prepare_bus_pin_functions(cell, cell.z_functions, bus.second);
-            prepare_bus_pin_functions(cell, tmp_functions, bus.second);
-        }
+        auto functions = construct_bus_functions(cell, input_pins);
+        // gt->add_boolean_functions(functions);
     }
     else
     {
+        for (const auto& pin : cell.pins)
+        {
+            if (!pin.function.empty())
+            {
+                auto function = boolean_function::from_string(pin.function, input_pins);
+                for (const auto& name : pin.pin_names)
+                {
+                    gt->add_boolean_function(name, function);
+                }
+            }
+
+            if (!pin.x_function.empty())
+            {
+                auto function = boolean_function::from_string(pin.x_function, input_pins);
+                for (const auto& name : pin.pin_names)
+                {
+                    gt->add_boolean_function(name + "_undefined", function);
+                }
+            }
+
+            if (!pin.z_function.empty())
+            {
+                auto function = boolean_function::from_string(pin.z_function, input_pins);
+                for (const auto& name : pin.pin_names)
+                {
+                    gt->add_boolean_function(name + "_tristate", function);
+                }
+            }
+        }
+
+        for (const auto& [name, function] : cell.special_functions)
+        {
+            gt->add_boolean_function(name, boolean_function::from_string(function, input_pins));
+        }
     }
 
-    gt->add_input_pins(cell.input_pins);
-    gt->add_output_pins(cell.output_pins);
+    gt->add_input_pins(input_pins);
+    gt->add_output_pins(output_pins);
 
     return gt;
 }
@@ -915,61 +1022,229 @@ void gate_library_parser_liberty::remove_comments(std::string& line, bool& multi
     }
 }
 
-void gate_library_parser_liberty::prepare_bus_pin_functions(cell_group& cell, std::map<std::string, std::string>& functions, const bus_group& output_bus)
+std::vector<std::string> gate_library_parser_liberty::tokenize_function(const std::string& function)
 {
-    std::vector<std::string> sorted_bus_names;
-    for (const auto& bus : cell.buses)
-    {
-        sorted_bus_names.push_back(bus.first);
-    }
-    std::sort(sorted_bus_names.begin(), sorted_bus_names.end(), [](const auto& a, const auto& b) { return a.size() > b.size(); });
+    std::string delimiters = "()[]:!'^+|&* ";
+    std::string current_token;
+    std::vector<std::string> res;
 
-    for (unsigned int i = 0; i < output_bus.pin_names.size(); i++)
+    for (char c : function)
     {
-        const auto& it = functions.find(output_bus.pin_names.at(i));
-        if (it == functions.end() || (it->second.empty()))
+        if (delimiters.find(c) == std::string::npos)
+        {
+            current_token += c;
+        }
+        else
+        {
+            if (!current_token.empty())
+            {
+                res.push_back(current_token);
+                current_token.clear();
+            }
+            res.push_back(std::string(1, c));
+        }
+    }
+    if (!current_token.empty())
+    {
+        res.push_back(current_token);
+        current_token.clear();
+    }
+
+    return res;
+}
+
+std::map<std::string, std::string>
+    gate_library_parser_liberty::expand_bus_function(const std::map<std::string, bus_group>& buses, const std::vector<std::string>& pin_names, const std::string& function)
+{
+    auto tokenized_funtion = tokenize_function(function);
+    std::map<std::string, std::string> res;
+
+    for (const auto& name : pin_names)
+    {
+        res.emplace(name, "");
+    }
+
+    std::string tmp = "";
+
+    for (u32 i = 0; i < tokenized_funtion.size(); i++)
+    {
+        if (const auto& it = buses.find(tokenized_funtion.at(i)); it != buses.end())
+        {
+            if (tokenized_funtion.size() > (i + 3) && tokenized_funtion.at(i + 1) == "[")
+            {
+                if (tokenized_funtion.size() > (i + 5) && tokenized_funtion.at(i + 3) == ":" && tokenized_funtion.at(i + 5) == "]")
+                {
+                    i32 start     = std::stoul(tokenized_funtion.at(i + 2));
+                    i32 end       = std::stoul(tokenized_funtion.at(i + 4));
+                    i32 direction = (start < end) ? 1 : -1;
+
+                    for (const auto& name : pin_names)
+                    {
+                        res[name] += tmp + it->second.index_to_pin_name.at(start);
+                        start += direction;
+                    }
+
+                    i += 5;
+                }
+                else if (tokenized_funtion.at(i + 3) == "]")
+                {
+                    u32 index = std::stoul(tokenized_funtion.at(i + 2));
+
+                    for (const auto& name : pin_names)
+                    {
+                        res[name] += tmp + it->second.index_to_pin_name.at(index);
+                    }
+
+                    i += 3;
+                }
+                else
+                {
+                    log_warning("liberty_parser", "cannot deal with bus '{}' in function '{}' near line {}, ignoring function.", it->first, function, it->second.line_number);
+                    return {};
+                }
+            }
+            else
+            {
+                for (u32 j = 0; j < pin_names.size(); j++)
+                {
+                    res[pin_names.at(j)] += tmp + it->second.pin_names.at(j);
+                }
+            }
+            tmp = "";
+        }
+        else
+        {
+            tmp += tokenized_funtion.at(i);
+        }
+    }
+
+    if (!tmp.empty())
+    {
+        for (const auto& name : pin_names)
+        {
+            res[name] += tmp;
+        }
+    }
+
+    return res;
+}
+
+std::string gate_library_parser_liberty::prepare_pin_function(const std::map<std::string, bus_group>& buses, const std::string& function)
+{
+    auto tokenized_funtion = tokenize_function(function);
+    std::string res        = "";
+
+    for (u32 i = 0; i < tokenized_funtion.size(); i++)
+    {
+        if (const auto& it = buses.find(tokenized_funtion.at(i)); it != buses.end())
+        {
+            if (tokenized_funtion.size() > (i + 3) && tokenized_funtion.at(i + 1) == "[" && tokenized_funtion.at(i + 3) == "]")
+            {
+                u32 index = std::stoul(tokenized_funtion.at(i + 2));
+
+                res += it->second.index_to_pin_name.at(index);
+
+                i += 3;
+            }
+            else
+            {
+                log_warning("liberty_parser", "cannot deal with bus '{}' in function '{}' near line {}, ignoring function.", it->first, function, it->second.line_number);
+                return "";
+            }
+        }
+        else
+        {
+            res += tokenized_funtion.at(i);
+        }
+    }
+
+    return res;
+}
+
+std::map<std::string, boolean_function> gate_library_parser_liberty::construct_bus_functions(const cell_group& cell, const std::vector<std::string>& input_pins)
+{
+    std::map<std::string, boolean_function> res;
+
+    for (const auto& [bus_name, bus] : cell.buses)
+    {
+        UNUSED(bus_name);
+
+        if (bus.direction != pin_direction::OUT && bus.direction != pin_direction::INOUT)
         {
             continue;
         }
 
-        auto tmp_function = it->second;
-
-        for (const auto& bus_name : sorted_bus_names)
+        for (const auto& pin : bus.pins)
         {
-            auto pos = tmp_function.find(bus_name);
-            while (pos != std::string::npos)
+            if (!pin.function.empty())
             {
-                if (tmp_function.size() > (pos + bus_name.size()) && tmp_function.at(pos + bus_name.size()) == '[')
+                for (auto [pin_name, function] : expand_bus_function(cell.buses, pin.pin_names, pin.function))
                 {
-                    unsigned int start = pos + bus_name.size();
-                    unsigned int colon = tmp_function.find(":", start);
-                    unsigned int end   = tmp_function.find("]", start);
-
-                    if (colon < end)
-                    {
-                        // PIN[A:B]
-                        int range_start = std::stoi(tmp_function.substr(start + 1, colon - start - 1));
-                        int range_end   = std::stoi(tmp_function.substr(colon + 1, end - colon - 1));
-                        int direction   = (range_end > range_start) ? 1 : -1;
-
-                        tmp_function.replace(pos, bus_name.size() + end - start + 1, bus_name + "(" + std::to_string(range_start + i * direction) + ")");
-                    }
-                    else
-                    {
-                        // PIN[A]
-                        tmp_function.replace(start, 1, "(");
-                        tmp_function.replace(end, 1, ")");
-                    }
+                    res.emplace(pin_name, boolean_function::from_string(function, input_pins));
                 }
-                else
+            }
+
+            if (!pin.x_function.empty())
+            {
+                for (auto [pin_name, function] : expand_bus_function(cell.buses, pin.pin_names, pin.x_function))
                 {
-                    // PIN
-                    tmp_function.replace(pos, bus_name.size(), bus_name + "(" + std::to_string(cell.buses.at(bus_name).range.at(i)) + ")");
+                    res.emplace(pin_name + "_undefined", boolean_function::from_string(function, input_pins));
                 }
-                pos = tmp_function.find(bus_name, pos + 1);
+            }
+
+            if (!pin.z_function.empty())
+            {
+                for (auto [pin_name, function] : expand_bus_function(cell.buses, pin.pin_names, pin.z_function))
+                {
+                    res.emplace(pin_name + "_tristate", boolean_function::from_string(function, input_pins));
+                }
+            }
+        }
+    }
+
+    for (const auto& pin : cell.pins)
+    {
+        if (!pin.function.empty())
+        {
+            if (auto function = prepare_pin_function(cell.buses, pin.function); !function.empty())
+            {
+                auto b_function = boolean_function::from_string(function, input_pins);
+                for (const auto& pin_name : pin.pin_names)
+                {
+                    res.emplace(pin_name, b_function);
+                }
             }
         }
 
-        functions[output_bus.pin_names.at(i)] = tmp_function;
+        if (!pin.x_function.empty())
+        {
+            if (auto function = prepare_pin_function(cell.buses, pin.x_function); !function.empty())
+            {
+                auto b_function = boolean_function::from_string(function, input_pins);
+                for (const auto& pin_name : pin.pin_names)
+                {
+                    res.emplace(pin_name + "_undefined", b_function);
+                }
+            }
+        }
+
+        if (!pin.z_function.empty())
+        {
+            if (auto function = prepare_pin_function(cell.buses, pin.z_function); !function.empty())
+            {
+                auto b_function = boolean_function::from_string(function, input_pins);
+                for (const auto& pin_name : pin.pin_names)
+                {
+                    res.emplace(pin_name + "_tristate", b_function);
+                }
+            }
+        }
     }
+
+    for (const auto& [name, function] : cell.special_functions)
+    {
+        res.emplace(name, boolean_function::from_string(prepare_pin_function(cell.buses, function), input_pins));
+    }
+
+    return res;
 }
