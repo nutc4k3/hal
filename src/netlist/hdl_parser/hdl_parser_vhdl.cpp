@@ -706,6 +706,7 @@ bool hdl_parser_vhdl::parse_generic_assign(instance& inst)
         }
         else if (core_utils::is_floating_point_t(rhs.string))
         {
+            value     = rhs;
             data_type = "floating_point";
         }
         else if (core_utils::ends_with_t(rhs.string, core_strings::case_insensitive_string("s")) || core_utils::ends_with_t(rhs.string, core_strings::case_insensitive_string("sec"))
@@ -869,7 +870,7 @@ std::optional<std::vector<std::vector<u32>>> hdl_parser_vhdl::parse_signal_range
     {
         auto bound_str = signal_bounds_str.extract_until(",");
         ranges.emplace_back(parse_range(bound_str));
-    } while (signal_str.consume(","));
+    } while (signal_bounds_str.consume(","));
 
     signal_str.consume(")", true);
 
