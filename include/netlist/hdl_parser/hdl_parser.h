@@ -27,6 +27,7 @@
 #include "core/special_strings.h"
 #include "def.h"
 #include "netlist/gate.h"
+#include "netlist/gate_library/gate_library.h"
 #include "netlist/gate_library/gate_type/gate_type.h"
 #include "netlist/module.h"
 #include "netlist/net.h"
@@ -73,20 +74,20 @@ public:
      */
     virtual bool parse() = 0;
 
-    std::shared_ptr<netlist> parse_and_instantiate(const std::string& gate_library)
+    std::shared_ptr<netlist> parse_and_instantiate(std::shared_ptr<gate_library> gl)
     {
         if (parse())
         {
-            return instantiate(gate_library);
+            return instantiate(gl);
         }
 
         return nullptr;
     }
 
-    std::shared_ptr<netlist> instantiate(const std::string& gate_library)
+    std::shared_ptr<netlist> instantiate(std::shared_ptr<gate_library> gl)
     {
         // create empty netlist
-        m_netlist = netlist_factory::create_netlist(gate_library);
+        m_netlist = netlist_factory::create_netlist(gl);
         if (m_netlist == nullptr)
         {
             // error printed in subfunction

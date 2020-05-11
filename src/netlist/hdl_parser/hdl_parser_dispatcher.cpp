@@ -50,7 +50,14 @@ namespace hdl_parser_dispatcher
 
                 log_info("hdl_parser", "instantiating '{}' using gate library '{}'...", file_name.string(), gate_library);
 
-                std::shared_ptr<netlist> netlist = parser.instantiate(gate_library);
+                auto gl = gate_library_manager::get_gate_library(gate_library);
+                if (gl == nullptr)
+                {
+                    log_critical("netlist", "error loading gate library '{}'.", gate_library);
+                    return nullptr;
+                }
+
+                std::shared_ptr<netlist> netlist = parser.instantiate(gl);
                 if (netlist == nullptr)
                 {
                     log_error("hdl_parser", "parser cannot instantiate file '{}' using gate library '{}'.", file_name.string(), gate_library);

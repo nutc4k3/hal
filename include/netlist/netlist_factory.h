@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "def.h"
-
 #include "core/program_options.h"
+#include "def.h"
+#include "netlist/gate_library/gate_library.h"
 
 /* forward declaration */
 class netlist;
@@ -47,6 +47,14 @@ namespace netlist_factory
      * @returns The new netlist.
      */
     NETLIST_API std::shared_ptr<netlist> create_netlist(const std::string& gate_library_name);
+
+    /**
+     * Creates a new netlist for a specific gate library.
+     *
+     * @param[in] gl - Pointer to the gate library object.
+     * @returns The new netlist.
+     */
+    NETLIST_API std::shared_ptr<netlist> create_netlist(std::shared_ptr<gate_library> gl);
 
     /**
      * Creates a new netlist for a specific file.

@@ -1,20 +1,16 @@
-#include "def.h"
-
 #include "core/interface_gui.h"
 #include "core/log.h"
 #include "core/plugin_manager.h"
 #include "core/utils.h"
-
-#include "netlist/hdl_parser/hdl_parser_dispatcher.h"
-
-#include "netlist/hdl_writer/hdl_writer_dispatcher.h"
-
+#include "def.h"
 #include "netlist/boolean_function.h"
 #include "netlist/gate.h"
 #include "netlist/gate_library/gate_library.h"
 #include "netlist/gate_library/gate_type/gate_type.h"
 #include "netlist/gate_library/gate_type/gate_type_lut.h"
 #include "netlist/gate_library/gate_type/gate_type_sequential.h"
+#include "netlist/hdl_parser/hdl_parser_dispatcher.h"
+#include "netlist/hdl_writer/hdl_writer_dispatcher.h"
 #include "netlist/module.h"
 #include "netlist/net.h"
 #include "netlist/netlist.h"
@@ -29,11 +25,11 @@
 #pragma clang diagnostic ignored "-Wshadow-field-in-constructor-modified"
 #endif
 
+#include "pybind11/functional.h"
 #include "pybind11/operators.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 #include "pybind11/stl_bind.h"
-#include "pybind11/functional.h"
 
 #pragma GCC diagnostic pop
 
@@ -87,7 +83,8 @@ PYBIND11_PLUGIN(hal_py)
     py::module m("hal_py", "hal python bindings");
 #endif    // ifdef PYBIND11_MODULE
 
-    m.def("log_info", [](std::string& message) { log_info("python_context", message); }, R"( some documentation info)");
+    m.def(
+        "log_info", [](std::string& message) { log_info("python_context", message); }, R"( some documentation info)");
 
     py::class_<hal::path>(m, "hal_path").def(py::init<>()).def(py::init<const hal::path&>()).def(py::init<const std::string&>()).def("__str__", [](hal::path& p) -> std::string {
         return std::string(p.c_str());
@@ -720,7 +717,13 @@ Gets an unoccupied module id. The value of 0 is reserved and represents an inval
 :returns: An unoccupied id.
 :rtype: int
 )")
-        .def("create_module", py::overload_cast<const u32, const std::string&, std::shared_ptr<module>, const std::vector<std::shared_ptr<gate>>&>(&netlist::create_module), py::arg("id"), py::arg("name"), py::arg("parent"), py::arg("gates") = std::vector<std::shared_ptr<gate>>(), R"(
+        .def("create_module",
+             py::overload_cast<const u32, const std::string&, std::shared_ptr<module>, const std::vector<std::shared_ptr<gate>>&>(&netlist::create_module),
+             py::arg("id"),
+             py::arg("name"),
+             py::arg("parent"),
+             py::arg("gates") = std::vector<std::shared_ptr<gate>>(),
+             R"(
 Creates and adds a new module to the netlist. It is identifiable via its unique id.
 
 :param int id: The unique id != 0 for the new module.
@@ -730,7 +733,12 @@ Creates and adds a new module to the netlist. It is identifiable via its unique 
 :returns: The new module on succes, None on error.
 :rtype: hal_py.module or None
 )")
-        .def("create_module", py::overload_cast<const std::string&, std::shared_ptr<module>, const std::vector<std::shared_ptr<gate>>&>(&netlist::create_module), py::arg("name"), py::arg("parent"), py::arg("gates") = std::vector<std::shared_ptr<gate>>(), R"(
+        .def("create_module",
+             py::overload_cast<const std::string&, std::shared_ptr<module>, const std::vector<std::shared_ptr<gate>>&>(&netlist::create_module),
+             py::arg("name"),
+             py::arg("parent"),
+             py::arg("gates") = std::vector<std::shared_ptr<gate>>(),
+             R"(
 Creates and adds a new module to the netlist. It is identifiable via its unique ID which is automatically set to the next free ID.
 
 :param str name: A name for the module.
@@ -854,7 +862,8 @@ Get a gate specified by id.
 :returns: The gate or None.
 :rtype: hal_py.get_gate() or None
 )")
-        .def_property_readonly("gates", [](const std::shared_ptr<netlist>& n){return n->get_gates();}, R"(
+        .def_property_readonly(
+            "gates", [](const std::shared_ptr<netlist>& n) { return n->get_gates(); }, R"(
 A set containing all gates of the netlist.
 
 :type: set[hal_py.get_gate()]
@@ -977,7 +986,8 @@ Get a net specified by id.
 :returns: The net or None.
 :rtype: hal_py.net or None
 )")
-        .def_property_readonly("nets", [](const std::shared_ptr<netlist>& n){return n->get_nets();}, R"(
+        .def_property_readonly(
+            "nets", [](const std::shared_ptr<netlist>& n) { return n->get_nets(); }, R"(
 A set containing all nets of the netlist.
 
 :type: set[hal_py.net]
@@ -1187,7 +1197,8 @@ If there is no function for the given name, the constant 'X' is returned.
 :returns: The boolean function.
 :rtype: hal_py.boolean_function
 )")
-        .def_property_readonly("boolean_functions", [](const std::shared_ptr<gate>& g){return g->get_boolean_functions();}, R"(
+        .def_property_readonly(
+            "boolean_functions", [](const std::shared_ptr<gate>& g) { return g->get_boolean_functions(); }, R"(
 A map from function name to boolean function for all boolean functions associated with this gate.
 
 :rtype: dict[str,hal_py.boolean_function]
@@ -1300,7 +1311,8 @@ Get the fan-out net which is connected to a specific output pin.
 :returns: The connected output net.
 :rtype: hal_py.net
 )")
-        .def_property_readonly("unique_predecessors", [](const std::shared_ptr<gate>& g){ return g->get_unique_predecessors();}, R"(
+        .def_property_readonly(
+            "unique_predecessors", [](const std::shared_ptr<gate>& g) { return g->get_unique_predecessors(); }, R"(
 A set of all unique predecessor gates of the gate.
 
 :type: list[hal_py.gate]
@@ -1312,7 +1324,8 @@ Get a set of all unique predecessor endpoints of the gate filterable by the gate
 :returns: A set of unique predecessors endpoints.
 :rtype: set[hal_py.endpoint]
 )")
-        .def_property_readonly("predecessors", [](const std::shared_ptr<gate>& g){ return g->get_predecessors();}, R"(
+        .def_property_readonly(
+            "predecessors", [](const std::shared_ptr<gate>& g) { return g->get_predecessors(); }, R"(
 A list of all all direct predecessor endpoints of the gate.
 
 :type: list[hal_py.endpoint]
@@ -1331,7 +1344,8 @@ Get the direct predecessor endpoint of the gate connected to a specific input pi
 :returns: The predecessor endpoint.
 :rtype: hal_py.endpoint
 )")
-        .def_property_readonly("unique_successors", [](const std::shared_ptr<gate>& g){ return g->get_unique_successors();}, R"(
+        .def_property_readonly(
+            "unique_successors", [](const std::shared_ptr<gate>& g) { return g->get_unique_successors(); }, R"(
 A set of all unique successor gates of the gate.
 
 :type: list[hal_py.gate]
@@ -1343,7 +1357,8 @@ Get a set of all unique successors of the gate filterable by the gate's output p
 :returns: A set of unique successor endpoints.
 :rtype: set[hal_py.endpoint]
 )")
-        .def_property_readonly("successors", [](const std::shared_ptr<gate>& g){ return g->get_successors();}, R"(
+        .def_property_readonly(
+            "successors", [](const std::shared_ptr<gate>& g) { return g->get_successors(); }, R"(
 A list of all direct successor endpoints of the gate.
 
 :type: list[hal_py.endpoint]
@@ -1444,7 +1459,8 @@ Get the number of sources.
 :returns: The number of sources of this net.
 :rtype: int
 )")
-        .def_property_readonly("sources", [](const std::shared_ptr<net>& n){return n->get_sources();}, R"(
+        .def_property_readonly(
+            "sources", [](const std::shared_ptr<net>& n) { return n->get_sources(); }, R"(
 Get the vector of sources of the net.
 
 :type: set[hal_py.net]
@@ -1526,7 +1542,8 @@ Get the number of destinations.
 :returns: The number of destinations of this net.
 :rtype: int
 )")
-        .def_property_readonly("destinations", [](const std::shared_ptr<net>& n){return n->get_destinations();}, R"(
+        .def_property_readonly(
+            "destinations", [](const std::shared_ptr<net>& n) { return n->get_destinations(); }, R"(
 Get the vector of destinations of the net.
 
 :type: set[hal_py.net]
@@ -1631,7 +1648,8 @@ If the new parent is a submodule of this module, the new parent is added as a di
 :returns: True if the parent was changed
 :rtype: bool
 )")
-        .def_property_readonly("submodules", [](const std::shared_ptr<module>& mod) { return mod->get_submodules(); }, R"(
+        .def_property_readonly(
+            "submodules", [](const std::shared_ptr<module>& mod) { return mod->get_submodules(); }, R"(
 A set of all direct submodules of this module.
 
 :type: set[hal_py.module]
@@ -1703,7 +1721,8 @@ Therefore it may contain some nets that are also regarded as output nets.
 :returns: The set of internal nets.
 :rtype: set[hal_py.net]
 )")
-        .def_property_readonly("gates", [](const std::shared_ptr<module>& mod) { return mod->get_gates(); }, R"(
+        .def_property_readonly(
+            "gates", [](const std::shared_ptr<module>& mod) { return mod->get_gates(); }, R"(
 The set of all gates belonging to the module.
 
 :type: set[hal_py.get_gate()]
@@ -1778,14 +1797,14 @@ Get the name of the port corresponding to the specified output net.
 :rtype: str
 )")
 
-.def("get_input_port_names", &module::get_input_port_names, R"(
+        .def("get_input_port_names", &module::get_input_port_names, R"(
 Get the mapping of all input nets to their corresponding port names.
      
 :returns: The map from input net to port name.
 :rtype: dict[hal_py.net,str]
 )")
 
-.def("get_output_port_names", &module::get_output_port_names, R"(
+        .def("get_output_port_names", &module::get_output_port_names, R"(
 Get the mapping of all output nets to their corresponding port names.
      
 :returns: The map from output net to port name.
@@ -1793,7 +1812,7 @@ Get the mapping of all output nets to their corresponding port names.
 )");
 
     m.def_submodule("netlist_factory")
-        .def("create_netlist", &netlist_factory::create_netlist, py::arg("gate_library_name"), R"(
+        .def("create_netlist", py::overload_cast<const std::string&>(&netlist_factory::create_netlist), py::arg("gate_library_name"), R"(
 Creates a new netlist for a specific gate library.
 
 :param str gate_library_name: Name of hardware gate library.
@@ -1875,10 +1894,11 @@ Releases all plugins and associated resources.
 :returns: True on success.
 :rtype: bool
 )")
-        .def("get_plugin_instance",
-             [](const std::string& plugin_name) -> std::shared_ptr<i_base> { return plugin_manager::get_plugin_instance<i_base>(plugin_name, true); },
-             py::arg("plugin_name"),
-             R"(
+        .def(
+            "get_plugin_instance",
+            [](const std::string& plugin_name) -> std::shared_ptr<i_base> { return plugin_manager::get_plugin_instance<i_base>(plugin_name, true); },
+            py::arg("plugin_name"),
+            R"(
 Gets the basic interface for a plugin specified by name.
 
 :param str plugin_name: The plugin name.
