@@ -720,18 +720,17 @@ bool hdl_parser_vhdl::parse_generic_assign(instance& inst)
             value     = rhs;
             data_type = "time";
         }
-        else if (rhs.string[0] == '\"' && rhs.string.back() == '\"')
+        else if (rhs.string.at(0) == '\"' && rhs.string.back() == '\"')
         {
             value     = rhs.string.substr(1, rhs.string.size() - 2);
             data_type = "string";
         }
-        else if (rhs.string[0] == '\'' && rhs.string[2] == '\'')
+        else if (rhs.string.at(0) == '\'' && rhs.string.at(2) == '\'')
         {
             value     = rhs.string.substr(1, 1);
             data_type = "bit_value";
         }
-        else if (core_utils::starts_with_t(rhs.string, core_strings::case_insensitive_string("b\"")) || core_utils::starts_with_t(rhs.string, core_strings::case_insensitive_string("o\""))
-                 || core_utils::starts_with_t(rhs.string, core_strings::case_insensitive_string("x\"")))
+        else if (rhs.string.at(1) == '\"' && rhs.string.back() == '\"')
         {
             value = get_hex_from_literal(rhs);
             if (value.empty())
@@ -1059,19 +1058,19 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
     auto line_number = value_token.number;
     auto value       = core_utils::to_lower_t(core_utils::replace_t(value_token.string, core_strings::case_insensitive_string("_"), core_strings::case_insensitive_string("")));
 
-    core_strings::case_insensitive_string res;
-
     char prefix;
     core_strings::case_insensitive_string number;
+    core_strings::case_insensitive_string res;
+
     if (value[0] != '\"')
     {
-        prefix = std::tolower(value[0]);
-        number = value.substr(2, value.find('\"') - 2);
+        prefix = value[0];
+        number = value.substr(2, value.rfind('\"') - 2);
     }
     else
     {
         prefix = 'b';
-        number = value.substr(1, value.find('\"') - 2);
+        number = value.substr(1, value.rfind('\"') - 1);
     }
 
     // parse number literal
@@ -1109,6 +1108,30 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
             break;
         }
 
+        case 'd': {
+            u64 tmp_val = 0;
+
+            for (const auto& c : number)
+            {
+                if (c >= '0' && c <= '9')
+                {
+                    tmp_val = (tmp_val * 10) + (c - '0');
+                }
+                else
+                {
+                    log_error("hdl_parser", "invalid character within octal number literal {} in line {}", value, line_number);
+                    return "";
+                }
+            }
+
+            do
+            {
+                res = (((tmp_val & 1) == 1) ? "1" : "0") + res;
+                tmp_val >>= 1;
+            } while (tmp_val != 0);
+            break;
+        }
+
         case 'x': {
             for (const auto& c : number)
             {
@@ -1139,22 +1162,21 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
     auto line_number = value_token.number;
     auto value       = core_utils::to_lower_t(core_utils::replace_t(value_token.string, core_strings::case_insensitive_string("_"), core_strings::case_insensitive_string("")));
 
-    u32 base;
-
+    i32 len = -1;
     char prefix;
     core_strings::case_insensitive_string number;
+    u32 base;
+
     if (value[0] != '\"')
     {
-        prefix = std::tolower(value[0]);
-        number = value.substr(2, value.find('\"') - 2);
+        prefix = value[0];
+        number = value.substr(2, value.rfind('\"') - 2);
     }
     else
     {
         prefix = 'b';
-        number = value.substr(1, value.find('\"') - 2);
+        number = value.substr(1, value.rfind('\"') - 1);
     }
-
-    i32 len;
 
     // select base
     switch (prefix)
@@ -1183,6 +1205,17 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
             break;
         }
 
+        case 'd': {
+            if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '9'); }))
+            {
+                log_error("hdl_parser", "invalid character within decimal number literal {} in line {}", value, line_number);
+                return "";
+            }
+
+            base = 10;
+            break;
+        }
+
         case 'x': {
             if (!std::all_of(number.begin(), number.end(), [](const char& c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); }))
             {
@@ -1202,6 +1235,14 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(toke
     }
 
     std::stringstream ss;
-    ss << std::setfill('0') << std::setw(len) << std::hex << stoull(core_strings::to_std_string<core_strings::case_insensitive_string>(number), 0, base);
+    if (len != -1)
+    {
+        // fill with '0'
+        ss << std::setfill('0') << std::setw((len + 3) / 4) << std::hex << stoull(core_strings::to_std_string<core_strings::case_insensitive_string>(number), 0, base);
+    }
+    else
+    {
+        ss << std::hex << stoull(core_strings::to_std_string<core_strings::case_insensitive_string>(number), 0, base);
+    }
     return core_strings::case_insensitive_string(ss.str().data());
 }

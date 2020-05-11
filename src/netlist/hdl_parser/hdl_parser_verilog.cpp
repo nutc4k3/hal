@@ -806,7 +806,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
     auto line_number  = value_token.number;
     std::string value = core_utils::to_lower(core_utils::replace(value_token.string, "_", ""));
 
-    i32 len;
+    i32 len = -1;
     std::string prefix;
     std::string number;
     std::string res;
@@ -814,7 +814,6 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
     // base specified?
     if (value.find('\'') == std::string::npos)
     {
-        len    = -1;
         prefix = "d";
         number = value;
     }
@@ -880,7 +879,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
 
             do
             {
-                res = std::to_string(tmp_val & 0x1) + res;
+                res = (((tmp_val & 1) == 1) ? "1" : "0") + res;
                 tmp_val >>= 1;
             } while (tmp_val != 0);
             break;
@@ -922,14 +921,13 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
 
 std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_token)
 {
-    auto line_number  = value_token.number;
-    std::string value = core_utils::to_lower(core_utils::replace(value_token, "_", ""));
+    auto line_number = value_token.number;
+    auto value       = core_utils::to_lower(core_utils::replace(value_token, "_", ""));
 
     i32 len = -1;
     std::string prefix;
     std::string number;
     u32 base;
-    std::string res;
 
     // base specified?
     if (value.find('\'') == std::string::npos)
