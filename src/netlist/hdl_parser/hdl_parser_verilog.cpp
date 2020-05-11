@@ -181,7 +181,7 @@ bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attrib
     {
         if (next_token == "input" || next_token == "output" || next_token == "inout")
         {
-            if (!parse_port_definition(e, port_names))
+            if (!parse_port_definition(e, port_names, internal_attributes))
             {
                 return false;
             }
@@ -254,7 +254,7 @@ void hdl_parser_verilog::parse_port_list(std::set<std::string>& port_names)
     }
 }
 
-bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::string>& port_names)
+bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::string>& port_names, std::map<std::string, std::string>& attributes)
 {
     i32 line_number           = m_token_stream.peek().number;
     std::string direction_str = m_token_stream.consume();
@@ -283,6 +283,20 @@ bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::st
     {
         // error already printed in subfunction
         return false;
+    }
+
+    // assign attributes to signals
+    if (!attributes.empty())
+    {
+        for (auto& p : ports)
+        {
+            for (const auto& [attribute_name, attribute_value] : attributes)
+            {
+                p.second.add_attribute(attribute_name, "unknown", attribute_value);
+            }
+        }
+
+        attributes.clear();
     }
 
     for (auto& port : ports)

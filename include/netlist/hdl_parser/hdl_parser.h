@@ -538,6 +538,11 @@ protected:
             _ports.emplace(s.get_name(), std::make_pair(direction, s));
         }
 
+        std::map<T, std::pair<port_direction, signal>>& get_ports()
+        {
+            return _ports;
+        }
+
         const std::map<T, std::pair<port_direction, signal>>& get_ports() const
         {
             return _ports;
@@ -1013,13 +1018,30 @@ private:
         const auto& expanded = e.get_expanded_ports();
         for (const auto& [port_name, port] : e.get_ports())
         {
-            auto direction = port.first;
+            auto direction         = port.first;
+            const auto& attributes = port.second.get_attributes();
 
             for (const auto& expanded_name : expanded.at(port_name))
             {
                 if (const auto& it = parent_module_assignments.find(expanded_name); it != parent_module_assignments.end())
                 {
-                    m_module_ports[m_net_by_name.at(it->second)] = std::make_tuple(direction, core_strings::to_std_string(expanded_name), module);
+                    auto net            = m_net_by_name.at(it->second);
+                    m_module_ports[net] = std::make_tuple(direction, core_strings::to_std_string(expanded_name), module);
+
+                    // assign port attributes
+                    for (const auto& attr : attributes)
+                    {
+                        if (!net->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
+                        {
+                            log_warning("hdl_parser",
+                                        "could not set data for signal '{}' in line {}: key: {}, value_data_type: {}, value: {}",
+                                        expanded_name,
+                                        port.second.get_line_number(),
+                                        std::get<0>(attr),
+                                        std::get<1>(attr),
+                                        std::get<2>(attr));
+                        }
+                    }
                 }
             }
         }
@@ -1027,6 +1049,7 @@ private:
         // create all internal signals
         for (const auto& [signal_name, expanded_signal] : e.get_expanded_signals())
         {
+            const auto& attributes = entity_signals.at(signal_name).get_attributes();
             for (const auto& expanded_name : expanded_signal)
             {
                 signal_alias[expanded_name] = get_unique_alias(m_signal_name_occurrences, expanded_name);
@@ -1042,13 +1065,13 @@ private:
                 m_net_by_name[signal_alias.at(expanded_name)] = new_net;
 
                 // assign signal attributes
-                for (const auto& attr : entity_signals.at(signal_name).get_attributes())
+                for (const auto& attr : attributes)
                 {
                     if (!new_net->set_data("attribute", std::get<0>(attr), std::get<1>(attr), std::get<2>(attr)))
                     {
                         log_warning("hdl_parser",
                                     "could not set data for signal '{}' in line {}: key: {}, value_data_type: {}, value: {}",
-                                    signal_name,
+                                    expanded_name,
                                     entity_signals.at(signal_name).get_line_number(),
                                     std::get<0>(attr),
                                     std::get<1>(attr),

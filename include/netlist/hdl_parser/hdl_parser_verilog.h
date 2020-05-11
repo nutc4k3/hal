@@ -64,7 +64,7 @@ private:
     // parse HDL into intermediate format
     bool parse_entity(std::map<std::string, std::string>& attributes);
     void parse_port_list(std::set<std::string>& port_names);
-    bool parse_port_definition(entity& e, const std::set<std::string>& port_names);
+    bool parse_port_definition(entity& e, const std::set<std::string>& port_names, std::map<std::string, std::string>& attributes);
     bool parse_signal_definition(entity& e, std::map<std::string, std::string>& attributes);
     bool parse_assign(entity& e);
     bool parse_attribute(std::map<std::string, std::string>& attributes);

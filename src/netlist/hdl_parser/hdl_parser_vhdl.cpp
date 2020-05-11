@@ -212,7 +212,7 @@ bool hdl_parser_vhdl::parse_entity()
     m_token_stream.consume("is", true);
     entity e(line_number, entity_name);
 
-    attribute_buffer.clear();
+    m_attribute_buffer.clear();
 
     auto next_token = m_token_stream.peek();
     while (next_token != "end")
@@ -248,11 +248,6 @@ bool hdl_parser_vhdl::parse_entity()
     m_token_stream.consume("end", true);
     m_token_stream.consume();
     m_token_stream.consume(";", true);
-
-    if (!assign_attributes(e))
-    {
-        return false;
-    }
 
     // add to collection of entities
     m_entities.emplace(entity_name, e);
@@ -387,11 +382,11 @@ bool hdl_parser_vhdl::parse_attribute()
             return true;
         }
 
-        attribute_buffer[target_class].emplace(attribute_target,
-                                               std::make_tuple(line_number,
-                                                               core_strings::to_std_string<core_strings::case_insensitive_string>(attribute_name),
-                                                               core_strings::to_std_string<core_strings::case_insensitive_string>(attribute_type),
-                                                               core_strings::to_std_string<core_strings::case_insensitive_string>(attribute_value)));
+        m_attribute_buffer[target_class].emplace(attribute_target,
+                                                 std::make_tuple(line_number,
+                                                                 core_strings::to_std_string<core_strings::case_insensitive_string>(attribute_name),
+                                                                 core_strings::to_std_string<core_strings::case_insensitive_string>(attribute_type),
+                                                                 core_strings::to_std_string<core_strings::case_insensitive_string>(attribute_value)));
     }
     else
     {
@@ -464,6 +459,11 @@ bool hdl_parser_vhdl::parse_architecture_header(entity& e)
         }
 
         next_token = m_token_stream.peek();
+    }
+
+    if (!assign_attributes(e))
+    {
+        return false;
     }
 
     return true;
@@ -757,7 +757,7 @@ bool hdl_parser_vhdl::parse_generic_assign(instance& inst)
 
 bool hdl_parser_vhdl::assign_attributes(entity& e)
 {
-    for (const auto& [target_class, attributes] : attribute_buffer)
+    for (const auto& [target_class, attributes] : m_attribute_buffer)
     {
         // entity attributes
         if (target_class == attribute_target_class::ENTITY)
@@ -775,9 +775,8 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
                 }
             }
         }
-
         // instance attributes
-        if (target_class == attribute_target_class::INSTANCE)
+        else if (target_class == attribute_target_class::INSTANCE)
         {
             auto& instances = e.get_instances();
 
@@ -794,22 +793,26 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
                 }
             }
         }
-
         // signal attributes
-        if (target_class == attribute_target_class::SIGNAL)
+        else if (target_class == attribute_target_class::SIGNAL)
         {
             auto& signals = e.get_signals();
+            auto& ports   = e.get_ports();
 
             for (const auto& [target, attribute] : attributes)
             {
-                if (const auto& signal_it = signals.find(target); signal_it == signals.end())
+                if (const auto& signal_it = signals.find(target); signal_it != signals.end())
                 {
-                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}", target, e.get_name(), std::get<0>(attribute));
-                    return false;
+                    signal_it->second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
+                }
+                if (const auto& port_it = ports.find(target); port_it == ports.end())
+                {
+                    port_it->second.second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
                 }
                 else
                 {
-                    signal_it->second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
+                    log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}", target, e.get_name(), std::get<0>(attribute));
+                    return false;
                 }
             }
         }

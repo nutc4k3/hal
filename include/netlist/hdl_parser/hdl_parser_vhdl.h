@@ -64,7 +64,7 @@ private:
     };
 
     using attribute_buffer_t = std::map<attribute_target_class, std::map<core_strings::case_insensitive_string, std::tuple<u32, std::string, std::string, std::string>>>;
-    attribute_buffer_t attribute_buffer;
+    attribute_buffer_t m_attribute_buffer;
 
     std::set<core_strings::case_insensitive_string> m_libraries;
     std::map<core_strings::case_insensitive_string, core_strings::case_insensitive_string> m_attribute_types;
