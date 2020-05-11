@@ -36,7 +36,7 @@ void gate_type_sequential::add_state_output_pin(std::string pin_name)
     m_state_pins.insert(pin_name);
 }
 
-void gate_type_sequential::add_inverted_state_output_pin(std::string output_pin_name)
+void gate_type_sequential::add_inverted_state_output_pin(std::string pin_name)
 {
     if (const auto& it = std::find(m_input_pins.begin(), m_input_pins.end(), pin_name); it != m_input_pins.end())
     {
@@ -44,7 +44,7 @@ void gate_type_sequential::add_inverted_state_output_pin(std::string output_pin_
         return;
     }
 
-    m_inverted_state_pins.insert(output_pin_name);
+    m_inverted_state_pins.insert(pin_name);
 }
 
 void gate_type_sequential::set_set_reset_behavior(set_reset_behavior sb1, set_reset_behavior sb2)
