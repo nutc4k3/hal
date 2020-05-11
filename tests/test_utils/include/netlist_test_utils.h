@@ -2,43 +2,42 @@
 #ifndef HAL_NETLIST_TEST_UTILS_H
 #define HAL_NETLIST_TEST_UTILS_H
 
-#include <core/utils.h>
-#include "test_def.h"
-#include <fstream>
-#include "netlist/netlist.h"
+#include "netlist/endpoint.h"
+#include "netlist/gate.h"
 #include "netlist/gate_library/gate_library.h"
 #include "netlist/gate_library/gate_library_manager.h"
-#include "netlist/gate.h"
-#include "netlist/net.h"
 #include "netlist/module.h"
-#include "netlist/endpoint.h"
+#include "netlist/net.h"
+#include "netlist/netlist.h"
+#include "test_def.h"
+
+#include <core/utils.h>
+#include <fstream>
 
 namespace fs = hal::fs;
 
 namespace test_utils
 {
-
     /*********************************************************
      *                      Constants                        *
      *********************************************************/
 
     // Minimum and invali ids for netlists, gates, nets and modules
-    const u32 INVALID_GATE_ID = 0;
-    const u32 INVALID_NET_ID = 0;
+    const u32 INVALID_GATE_ID   = 0;
+    const u32 INVALID_NET_ID    = 0;
     const u32 INVALID_MODULE_ID = 0;
 
-    const u32 MIN_MODULE_ID = 2;
-    const u32 MIN_GATE_ID = 1;
-    const u32 MIN_NET_ID = 1;
+    const u32 MIN_MODULE_ID  = 2;
+    const u32 MIN_GATE_ID    = 1;
+    const u32 MIN_NET_ID     = 1;
     const u32 MIN_NETLIST_ID = 1;
-    const u32 TOP_MODULE_ID = 1;
+    const u32 TOP_MODULE_ID  = 1;
 
     // Name for accessing our example gate library
     static const std::string g_lib_name = "EXAMPLE_GATE_LIBRARY";
     //static const std::string g_lib_name = "example_library";
     // Name for accessing the custom gate library after the call of 'create_temp_gate_lib()'
     const std::string temp_lib_name = "TEMP_GATE_LIBRARY";
-
 
     /*********************************************************
      *                      Functions                        *
@@ -117,7 +116,7 @@ namespace test_utils
      * @param[in] vec_2 - second vector
      * @returns TRUE if both vectors have the same content. FALSE otherwise
      */
-    template <typename T>
+    template<typename T>
     bool vectors_have_same_content(const std::vector<T> vector_1, const std::vector<T> vector_2)
     {
         std::vector<T> vec_1(vector_1);
@@ -178,22 +177,9 @@ namespace test_utils
     std::shared_ptr<gate> get_gate_by_subname(std::shared_ptr<netlist> nl, const std::string subname);
 
     /**
-     * Creates a custom gate library that contains certain gate types that aren't supported by the example gate library.
-     * It mainly supports gate types with input and output pin vectors of dimension 1 up to 3. It contains gates of the
-     * form 'GATE_<input pins per dimension>^<input dimentsion>_IN_<output pins per dimension>^<output dimentsion>_IN'
-     * E.g. 'GATE_4^1_IN_1^0' whould have for input pins (I(0)-I(3)) and only one output pin (O)
-     * After the library is created, it can be accessed via the name in 'temp_lib_name'
-     *
-     * IMPORTANT: This function creates a file in a common gate library directory. Don't forget to remove it via
-     * a call of remove_temp_gate_lib()
+     * Creates a gate library dedicated solely to testing. Construction of that gate library is independent of the gate library parser.
      */
-    void create_temp_gate_lib();
-
-    /**
-     * Removes the file created by the function 'create_temp_gate_lib()'. If the file doesn't exist it does nothing.
-     */
-    void remove_temp_gate_lib();
-
+    std::shared_ptr<gate_library> get_testing_gate_library();
 
     // ===== Example Netlists =====
 
@@ -219,7 +205,6 @@ namespace test_utils
      */
     std::shared_ptr<netlist> create_example_netlist(const int id = -1);
 
-
     /*
      *      example netlist II
      *
@@ -244,7 +229,6 @@ namespace test_utils
      */
     std::shared_ptr<netlist> create_example_netlist_2(const int id = -1);
 
-
     /*
      *      example netlist negative
      *
@@ -258,7 +242,6 @@ namespace test_utils
      * @returns the created netlist object
      */
     std::shared_ptr<netlist> create_example_netlist_negative(const int id = -1);
-
 
     /*
       *      Example netlist circuit diagram (Id in brackets). Used for get fan in and
@@ -285,7 +268,6 @@ namespace test_utils
      * @returns the created netlist object
      */
     std::shared_ptr<netlist> create_example_parse_netlist(int id = -1);
-
 
     // ===== Netlist Comparison Functions (mainly used to test parser and writer) =====
 
@@ -350,7 +332,6 @@ namespace test_utils
      * @returns TRUE if nl_0 and nl_1 are equal under the considered conditions. FALSE otherwise.
      */
     bool netlists_are_equal(const std::shared_ptr<netlist> nl_0, const std::shared_ptr<netlist> nl_1, const bool ignore_id = false);
-
 
     // ===== Filter Factory Functions (used in module::get_gates, netlist::get_nets, moduleget_submodules, gate::get_sucessors, gate::get_predecessors) =====
 
@@ -435,8 +416,6 @@ namespace test_utils
      */
     std::function<bool(const std::string&, const endpoint&)> type_filter(const std::string& type);
 
-
 }    // namespace test_utils
 
-
-#endif // HAL_NETLIST_TEST_UTILS_H
+#endif    // HAL_NETLIST_TEST_UTILS_H
