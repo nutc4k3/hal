@@ -774,7 +774,7 @@ EXPECT_EQ(gate_0_child->get_fan_out_net("O"), net_0_child);
 EXPECT_EQ(gate_1_child->get_fan_in_net("I"), net_0_child);
 EXPECT_EQ(gate_1_child->get_fan_out_net("O"), net_1);
 // Check that the attributes of the child entities port are inherit correctly to the connecting net
-EXPECT_EQ(net_0->get_data_by_key("vhdl_attribute", "child_net_attri"), std::make_tuple("string", "child_net_attribute"));
+EXPECT_EQ(net_0->get_data_by_key("attribute", "child_net_attri"), std::make_tuple("string", "child_net_attribute"));
 
 // Test that the modules are created and assigned correctly
 std::shared_ptr<module> top_mod = nl->get_top_module();
@@ -783,7 +783,7 @@ std::shared_ptr<module> child_mod = *top_mod->get_submodules().begin();
 EXPECT_EQ(child_mod->get_name(), "child_mod");
 EXPECT_EQ(top_mod->get_gates(), std::set<std::shared_ptr<gate>>({gate_0, gate_1}));
 EXPECT_EQ(child_mod->get_gates(), std::set<std::shared_ptr<gate>>({gate_0_child, gate_1_child}));
-EXPECT_EQ(child_mod->get_data_by_key("vhdl_attribute", "child_attri"), std::make_tuple("string", "child_attribute"));
+EXPECT_EQ(child_mod->get_data_by_key("attribute", "child_attri"), std::make_tuple("string", "child_attribute"));
 }
 {
     // Create a netlist with the following MODULE hierarchy (assigned gates in '()'):
@@ -1122,10 +1122,10 @@ EXPECT_EQ(g_1->get_fan_in_net("I2"), net_master);
 EXPECT_TRUE(net_master->is_global_input_net());
 
 // VHDL specific: Check the net attribute propagation
-EXPECT_EQ(net_master->get_data_by_key("vhdl_attribute", "master_attr"), std::make_tuple("string", "master_attr"));
-EXPECT_EQ(net_master->get_data_by_key("vhdl_attribute", "slave_0_attr"), std::make_tuple("string", "slave_0_attr"));
-EXPECT_EQ(net_master->get_data_by_key("vhdl_attribute", "slave_1_attr"), std::make_tuple("string", "slave_1_attr"));
-EXPECT_EQ(net_master->get_data_by_key("vhdl_attribute", "slave_2_attr"), std::make_tuple("string", "slave_2_attr"));
+EXPECT_EQ(net_master->get_data_by_key("attribute", "master_attr"), std::make_tuple("string", "master_attr"));
+EXPECT_EQ(net_master->get_data_by_key("attribute", "slave_0_attr"), std::make_tuple("string", "slave_0_attr"));
+EXPECT_EQ(net_master->get_data_by_key("attribute", "slave_1_attr"), std::make_tuple("string", "slave_1_attr"));
+EXPECT_EQ(net_master->get_data_by_key("attribute", "slave_2_attr"), std::make_tuple("string", "slave_2_attr"));
 }
 /*{
             // Testing the assignment of logic vectors (ISSUE: map::at failure l.905)
@@ -1250,7 +1250,7 @@ TEST_F(hdl_parser_vhdl_test, check_attributes){
                                        "end TEST_Comp;\n"
                                        "architecture STRUCTURE of TEST_Comp is\n"
                                        "  attribute attri_name : attri_type;\n"
-                                       "  attribute attri_name of gate_0 : item_class is attri_value;\n"
+                                       "  attribute attri_name of gate_0 : label is attri_value;\n"
                                        "begin\n"
                                        "  gate_0 : INV\n"
                                        "    port map (\n"
@@ -1264,7 +1264,7 @@ std::shared_ptr<netlist> nl = vhdl_parser.parse_and_instantiate(g_lib_name);
 ASSERT_NE(nl, nullptr);
 ASSERT_EQ(nl->get_gates(gate_type_filter("INV")).size(), 1);
 std::shared_ptr<gate> attri_gate = *nl->get_gates(gate_type_filter("INV")).begin();
-EXPECT_EQ(attri_gate->get_data_by_key("vhdl_attribute", "attri_name"), std::make_tuple("attri_type", "attri_value"));
+EXPECT_EQ(attri_gate->get_data_by_key("attribute", "attri_name"), std::make_tuple("attri_type", "attri_value"));
 }
 {
     // Add a custom attribute for a net
@@ -1298,7 +1298,7 @@ EXPECT_EQ(attri_gate->get_data_by_key("vhdl_attribute", "attri_name"), std::make
     ASSERT_EQ(nl->get_nets(net_name_filter("net_0")).size(), 1);
     std::shared_ptr<net> attri_net = *nl->get_nets(net_name_filter("net_0")).begin();
     EXPECT_NE(attri_net, nullptr);
-    EXPECT_EQ(attri_net->get_data_by_key("vhdl_attribute", "attri_name"), std::make_tuple("attri_type", "attri_value"));
+    EXPECT_EQ(attri_net->get_data_by_key("attribute", "attri_name"), std::make_tuple("attri_type", "attri_value"));
 }
 TEST_END
 }
@@ -1964,7 +1964,7 @@ TEST_F(hdl_parser_vhdl_test, check_invalid_input)
         EXPECT_NE(nl, nullptr);
         ASSERT_EQ(nl->get_gates(gate_type_filter("INV")).size(), 1);
         std::shared_ptr<gate> attri_gate = *nl->get_gates(gate_type_filter("INV")).begin();
-        EXPECT_EQ(attri_gate->get_data_by_key("vhdl_attribute", "attri_name"), std::make_tuple("UNKNOWN", "attri_value"));
+        EXPECT_EQ(attri_gate->get_data_by_key("attribute", "attri_name"), std::make_tuple("UNKNOWN", "attri_value"));
     }
     {
         // Use the 'attribute'-keyword in an unexpected way
