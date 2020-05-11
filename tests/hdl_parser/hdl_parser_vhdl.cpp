@@ -900,8 +900,8 @@ EXPECT_EQ(child_mod->get_data_by_key("attribute", "child_attri"), std::make_tupl
     EXPECT_EQ(top_child_one->get_name(), "child_one_mod");
 
     EXPECT_TRUE(core_utils::starts_with(top_child_two->get_name(), "child_two_mod" + module_suffix));
-    EXPECT_TRUE(core_utils::starts_with(one_child_0->get_name(), "gate_1_ent_two" + module_suffix));
-    EXPECT_TRUE(core_utils::starts_with(one_child_1->get_name(), "gate_0_ent_two" + module_suffix));
+    EXPECT_TRUE(core_utils::starts_with(one_child_0->get_name(), "gate_0_ent_two" + module_suffix));
+    EXPECT_TRUE(core_utils::starts_with(one_child_1->get_name(), "gate_1_ent_two" + module_suffix));
     // All 3 names should be unique
     EXPECT_EQ(std::set<std::string>({top_child_two->get_name(), one_child_0->get_name(), one_child_1->get_name()}).size(), 3);
 
@@ -1950,7 +1950,7 @@ TEST_F(hdl_parser_vhdl_test, check_invalid_input)
                                 "  );\n"
                                 "end TEST_Comp;\n"
                                 "architecture STRUCTURE of TEST_Comp is\n"
-                                "  attribute attri_name of gate_0 : item_class is attri_value;\n"
+                                "  attribute attri_name of gate_0 : label is attri_value;\n"
                                 "begin\n"
                                 "  gate_0 : INV\n"
                                 "    port map (\n"
@@ -1964,7 +1964,7 @@ TEST_F(hdl_parser_vhdl_test, check_invalid_input)
         EXPECT_NE(nl, nullptr);
         ASSERT_EQ(nl->get_gates(gate_type_filter("INV")).size(), 1);
         std::shared_ptr<gate> attri_gate = *nl->get_gates(gate_type_filter("INV")).begin();
-        EXPECT_EQ(attri_gate->get_data_by_key("attribute", "attri_name"), std::make_tuple("UNKNOWN", "attri_value"));
+        EXPECT_EQ(attri_gate->get_data_by_key("attribute", "attri_name"), std::make_tuple("unknown", "attri_value"));
     }
     {
         // Use the 'attribute'-keyword in an unexpected way
