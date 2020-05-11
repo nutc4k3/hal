@@ -353,8 +353,7 @@ bool hdl_parser_vhdl::parse_attribute()
             attribute_value = attribute_value.substr(1, attribute_value.size() - 2);
         }
 
-        auto type_it = m_attribute_types.find(attribute_name);
-        if (type_it == m_attribute_types.end())
+        if (auto type_it = m_attribute_types.find(attribute_name); type_it == m_attribute_types.end())
         {
             log_warning("hdl_parser", "attribute {} has unknown base type in line {}", attribute_name, line_number);
             attribute_type = "unknown";
@@ -415,7 +414,7 @@ bool hdl_parser_vhdl::parse_architecture()
 
     m_token_stream.consume("is", true);
 
-    return parse_architecture_header(e) && parse_architecture_body(e);
+    return parse_architecture_header(e) && parse_architecture_body(e) && assign_attributes(e);
 }
 
 bool hdl_parser_vhdl::parse_architecture_header(entity& e)
@@ -459,11 +458,6 @@ bool hdl_parser_vhdl::parse_architecture_header(entity& e)
         }
 
         next_token = m_token_stream.peek();
-    }
-
-    if (!assign_attributes(e))
-    {
-        return false;
     }
 
     return true;
@@ -804,7 +798,7 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
                 {
                     signal_it->second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
                 }
-                if (const auto& port_it = ports.find(target); port_it == ports.end())
+                else if (const auto& port_it = ports.find(target); port_it != ports.end())
                 {
                     port_it->second.second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
                 }
