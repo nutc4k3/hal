@@ -263,7 +263,7 @@ TEST_F(hdl_parser_vhdl_test, check_generic_map){
                                        // -- VHDL specific Data Types:
                                        "      key_boolean => true,"
                                        "      key_time => 1.234sec,"
-                                       "      key_bit_value => '101010111100'"
+                                       "      key_bit_value => '101010111100'"    // TODO this is not allowed, only single bits may be used between single brackets
                                        "    )"
                                        "    port map ( "
                                        "      I => net_global_input "
