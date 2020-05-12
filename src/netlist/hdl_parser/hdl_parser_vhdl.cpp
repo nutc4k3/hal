@@ -54,7 +54,7 @@ static bool is_digits(const core_strings::case_insensitive_string& str)
 bool hdl_parser_vhdl::tokenize()
 {
     std::vector<token<core_strings::case_insensitive_string>> parsed_tokens;
-    std::string delimiters = ",(): ;=><&";
+    const std::string delimiters = ",(): ;=><&";
     core_strings::case_insensitive_string current_token;
     u32 line_number = 0;
 
@@ -199,8 +199,8 @@ bool hdl_parser_vhdl::parse_library()
 bool hdl_parser_vhdl::parse_entity()
 {
     m_token_stream.consume("entity", true);
-    u32 line_number                                   = m_token_stream.peek().number;
-    core_strings::case_insensitive_string entity_name = m_token_stream.consume();
+    const u32 line_number  = m_token_stream.peek().number;
+    const auto entity_name = m_token_stream.consume().string;
 
     // verify entity name
     if (m_entities.find(entity_name) != m_entities.end())
@@ -268,7 +268,7 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
         std::vector<core_strings::case_insensitive_string> port_names;
         std::set<signal> signals;
 
-        auto line_number = port_def_str.peek().number;
+        const auto line_number = port_def_str.peek().number;
 
         // extract names
         do
@@ -280,7 +280,7 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
 
         // extract direction
         port_direction direction;
-        auto direction_str = port_def_str.consume().string;
+        const auto direction_str = port_def_str.consume().string;
         if (direction_str == "in")
         {
             direction = port_direction::IN;
@@ -300,8 +300,8 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
         }
 
         // extract ranges
-        auto port_str = port_def_str.extract_until(";");
-        auto ranges   = parse_signal_ranges(port_str);
+        auto port_str     = port_def_str.extract_until(";");
+        const auto ranges = parse_signal_ranges(port_str);
         if (!ranges.has_value())
         {
             // error already printed in subfunction
@@ -312,8 +312,7 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
 
         for (const auto& name : port_names)
         {
-            signal s(line_number, name, *ranges);
-            e.add_port(direction, s);
+            e.add_port(direction, signal(line_number, name, *ranges));
         }
     }
 
@@ -325,10 +324,10 @@ bool hdl_parser_vhdl::parse_port_definitons(entity& e)
 
 bool hdl_parser_vhdl::parse_attribute()
 {
-    u32 line_number = m_token_stream.peek().number;
+    const auto line_number = m_token_stream.peek().number;
 
     m_token_stream.consume("attribute", true);
-    auto attribute_name = m_token_stream.consume().string;
+    const auto attribute_name = m_token_stream.consume().string;
 
     if (m_token_stream.peek() == ":")
     {
@@ -340,9 +339,9 @@ bool hdl_parser_vhdl::parse_attribute()
     {
         attribute_target_class target_class;
         m_token_stream.consume("of", true);
-        auto attribute_target = m_token_stream.consume();
+        const auto attribute_target = m_token_stream.consume().string;
         m_token_stream.consume(":", true);
-        auto attribute_class = m_token_stream.consume();
+        const auto attribute_class = m_token_stream.consume().string;
         m_token_stream.consume("is", true);
         auto attribute_value = m_token_stream.join_until(";", " ").string;
         m_token_stream.consume(";", true);
@@ -353,7 +352,7 @@ bool hdl_parser_vhdl::parse_attribute()
             attribute_value = attribute_value.substr(1, attribute_value.size() - 2);
         }
 
-        if (auto type_it = m_attribute_types.find(attribute_name); type_it == m_attribute_types.end())
+        if (const auto type_it = m_attribute_types.find(attribute_name); type_it == m_attribute_types.end())
         {
             log_warning("hdl_parser", "attribute {} has unknown base type in line {}", attribute_name, line_number);
             attribute_type = "unknown";
@@ -377,7 +376,7 @@ bool hdl_parser_vhdl::parse_attribute()
         }
         else
         {
-            log_warning("hdl_parser", "unsupported attribute class '{}' in line {}, ignoring attribute", attribute_class.string, line_number);
+            log_warning("hdl_parser", "unsupported attribute class '{}' in line {}, ignoring attribute", attribute_class, line_number);
             return true;
         }
 
@@ -402,19 +401,21 @@ bool hdl_parser_vhdl::parse_architecture()
     m_token_stream.consume();
     m_token_stream.consume("of", true);
 
-    auto entity_name = m_token_stream.consume();
+    const auto entity_name = m_token_stream.consume().string;
 
-    auto it = m_entities.find(entity_name);
-    if (it == m_entities.end())
+    if (const auto it = m_entities.find(entity_name); it == m_entities.end())
     {
-        log_error("hdl_parser", "architecture refers to entity '{}', but no such entity exists", entity_name.string);
+        log_error("hdl_parser", "architecture refers to entity '{}', but no such entity exists", entity_name);
         return false;
     }
-    auto& e = it->second;
+    else
+    {
+        auto& e = it->second;
 
-    m_token_stream.consume("is", true);
+        m_token_stream.consume("is", true);
 
-    return parse_architecture_header(e) && parse_architecture_body(e) && assign_attributes(e);
+        return parse_architecture_header(e) && parse_architecture_body(e) && assign_attributes(e);
+    }
 }
 
 bool hdl_parser_vhdl::parse_architecture_header(entity& e)
@@ -433,7 +434,7 @@ bool hdl_parser_vhdl::parse_architecture_header(entity& e)
         {
             // components are ignored
             m_token_stream.consume("component", true);
-            auto component_name = m_token_stream.consume().string;
+            const auto component_name = m_token_stream.consume().string;
             m_token_stream.consume_until("end");
             m_token_stream.consume("end", true);
             m_token_stream.consume();
@@ -469,7 +470,7 @@ bool hdl_parser_vhdl::parse_signal_definition(entity& e)
 
     m_token_stream.consume("signal", true);
 
-    auto line_number = m_token_stream.peek().number;
+    const auto line_number = m_token_stream.peek().number;
 
     // extract names
     do
@@ -480,8 +481,8 @@ bool hdl_parser_vhdl::parse_signal_definition(entity& e)
     m_token_stream.consume(":", true);
 
     // extract bounds
-    auto signal_str = m_token_stream.extract_until(";");
-    auto ranges     = parse_signal_ranges(signal_str);
+    auto signal_str   = m_token_stream.extract_until(";");
+    const auto ranges = parse_signal_ranges(signal_str);
     if (!ranges.has_value())
     {
         // error already printed in subfunction
@@ -492,9 +493,7 @@ bool hdl_parser_vhdl::parse_signal_definition(entity& e)
 
     for (const auto& name : signal_names)
     {
-        signal s(line_number, name, *ranges);
-
-        e.add_signal(s);
+        e.add_signal(signal(line_number, name, *ranges));
     }
 
     return true;
@@ -541,15 +540,15 @@ bool hdl_parser_vhdl::parse_architecture_body(entity& e)
 
 bool hdl_parser_vhdl::parse_assign(entity& e)
 {
-    auto line_number = m_token_stream.peek().number;
-    auto left_str    = m_token_stream.extract_until("<=");
+    const auto line_number = m_token_stream.peek().number;
+    auto left_str          = m_token_stream.extract_until("<=");
     m_token_stream.consume("<=", true);
     auto right_str = m_token_stream.extract_until(";");
     m_token_stream.consume(";", true);
 
     // extract assignments for each bit
-    auto left_parts  = get_assignment_signals(e, left_str, true, false);
-    auto right_parts = get_assignment_signals(e, right_str, false, false);
+    const auto left_parts  = get_assignment_signals(e, left_str, true, false);
+    const auto right_parts = get_assignment_signals(e, right_str, false, false);
 
     // verify correctness
     if (!left_parts.has_value() || !right_parts.has_value())
@@ -571,8 +570,8 @@ bool hdl_parser_vhdl::parse_assign(entity& e)
 
 bool hdl_parser_vhdl::parse_instance(entity& e)
 {
-    u32 line_number                                     = m_token_stream.peek().number;
-    core_strings::case_insensitive_string instance_name = m_token_stream.consume();
+    const auto line_number   = m_token_stream.peek().number;
+    const auto instance_name = m_token_stream.consume();
     core_strings::case_insensitive_string instance_type;
     m_token_stream.consume(":", true);
 
@@ -580,8 +579,8 @@ bool hdl_parser_vhdl::parse_instance(entity& e)
     if (m_token_stream.peek() == "entity")
     {
         m_token_stream.consume("entity", true);
-        instance_type = m_token_stream.consume();
-        auto pos      = instance_type.find('.');
+        instance_type  = m_token_stream.consume();
+        const auto pos = instance_type.find('.');
         if (pos != std::string::npos)
         {
             instance_type = instance_type.substr(pos + 1);
@@ -660,8 +659,8 @@ bool hdl_parser_vhdl::parse_port_assign(entity& e, instance& inst)
 
         if (!right_str.consume("open"))
         {
-            auto left_parts  = get_assignment_signals(e, left_str, true, true);
-            auto right_parts = get_assignment_signals(e, right_str, false, true);
+            const auto left_parts  = get_assignment_signals(e, left_str, true, true);
+            const auto right_parts = get_assignment_signals(e, right_str, false, true);
 
             if (!left_parts.has_value() || !right_parts.has_value())
             {
@@ -687,10 +686,10 @@ bool hdl_parser_vhdl::parse_generic_assign(instance& inst)
     {
         core_strings::case_insensitive_string value, data_type;
 
-        auto line_number = generic_str.peek().number;
-        auto lhs         = generic_str.join_until("=>", "");
+        const auto line_number = generic_str.peek().number;
+        const auto lhs         = generic_str.join_until("=>", "");
         generic_str.consume("=>", true);
-        auto rhs = generic_str.join_until(",", "");
+        const auto rhs = generic_str.join_until(",", "");
         generic_str.consume(",", generic_str.remaining() > 0);    // last entry has no comma
 
         // determine data type
@@ -776,7 +775,7 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
 
             for (const auto& [target, attribute] : attributes)
             {
-                if (const auto& instance_it = instances.find(target); instance_it == instances.end())
+                if (const auto instance_it = instances.find(target); instance_it == instances.end())
                 {
                     log_error("hdl_parser", "invalid attribute target '{}' within entity '{}' in line {}", target, e.get_name(), std::get<0>(attribute));
                     return false;
@@ -795,11 +794,11 @@ bool hdl_parser_vhdl::assign_attributes(entity& e)
 
             for (const auto& [target, attribute] : attributes)
             {
-                if (const auto& signal_it = signals.find(target); signal_it != signals.end())
+                if (const auto signal_it = signals.find(target); signal_it != signals.end())
                 {
                     signal_it->second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
                 }
-                else if (const auto& port_it = ports.find(target); port_it != ports.end())
+                else if (const auto port_it = ports.find(target); port_it != ports.end())
                 {
                     port_it->second.second.add_attribute(std::get<1>(attribute), std::get<2>(attribute), std::get<3>(attribute));
                 }
@@ -826,8 +825,8 @@ std::vector<u32> hdl_parser_vhdl::parse_range(token_stream<core_strings::case_in
         return {(u32)std::stoi(core_strings::to_std_string<core_strings::case_insensitive_string>(range_str.consume().string))};
     }
 
-    int direction = 1;
-    int start     = std::stoi(core_strings::to_std_string<core_strings::case_insensitive_string>(range_str.consume().string));
+    int direction   = 1;
+    const int start = std::stoi(core_strings::to_std_string<core_strings::case_insensitive_string>(range_str.consume().string));
 
     if (range_str.peek() == "downto")
     {
@@ -839,7 +838,7 @@ std::vector<u32> hdl_parser_vhdl::parse_range(token_stream<core_strings::case_in
         range_str.consume("to", true);
     }
 
-    int end = std::stoi(core_strings::to_std_string<core_strings::case_insensitive_string>(range_str.consume().string));
+    const int end = std::stoi(core_strings::to_std_string<core_strings::case_insensitive_string>(range_str.consume().string));
 
     std::vector<u32> res;
     for (int i = start; i != end + direction; i += direction)
@@ -854,9 +853,9 @@ static std::map<core_strings::case_insensitive_string, size_t> id_to_dim = {{"st
 std::optional<std::vector<std::vector<u32>>> hdl_parser_vhdl::parse_signal_ranges(token_stream<core_strings::case_insensitive_string>& signal_str)
 {
     std::vector<std::vector<u32>> ranges;
-    auto line_number = signal_str.peek().number;
+    const auto line_number = signal_str.peek().number;
 
-    auto type_name = signal_str.consume();
+    const auto type_name = signal_str.consume();
     if (type_name == "std_logic")
     {
         return ranges;
@@ -876,7 +875,7 @@ std::optional<std::vector<std::vector<u32>>> hdl_parser_vhdl::parse_signal_range
 
     if (id_to_dim.find(type_name) != id_to_dim.end())
     {
-        auto dimension = id_to_dim.at(type_name);
+        const auto dimension = id_to_dim.at(type_name);
 
         if (ranges.size() != dimension)
         {
@@ -937,9 +936,9 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
 
     for (auto& part_str : parts)
     {
-        auto signal_name_token = part_str.consume();
-        i32 line_number        = signal_name_token.number;
-        auto signal_name       = signal_name_token.string;
+        const auto signal_name_token = part_str.consume();
+        const auto line_number       = signal_name_token.number;
+        auto signal_name             = signal_name_token.string;
         std::vector<std::vector<u32>> ranges;
         bool is_binary      = false;
         bool is_bound_known = true;
@@ -1004,11 +1003,11 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
                 {
                     const auto& signals = e.get_signals();
                     const auto& ports   = e.get_ports();
-                    if (auto signal_it = signals.find(signal_name); signal_it != signals.end())
+                    if (const auto signal_it = signals.find(signal_name); signal_it != signals.end())
                     {
                         ranges = signal_it->second.get_ranges();
                     }
-                    else if (auto port_it = ports.find(signal_name); port_it != ports.end())
+                    else if (const auto port_it = ports.find(signal_name); port_it != ports.end())
                     {
                         ranges = port_it->second.second.get_ranges();
                     }
@@ -1030,28 +1029,28 @@ std::optional<std::pair<std::vector<hdl_parser_vhdl::signal>, i32>>
     return std::make_pair(result, size);
 }
 
-static std::map<char, core_strings::case_insensitive_string> oct_to_bin = {{'0', "000"}, {'1', "001"}, {'2', "010"}, {'3', "011"}, {'4', "100"}, {'5', "101"}, {'6', "110"}, {'7', "111"}};
-static std::map<char, core_strings::case_insensitive_string> hex_to_bin = {{'0', "0000"},
-                                                                           {'1', "0001"},
-                                                                           {'2', "0010"},
-                                                                           {'3', "0011"},
-                                                                           {'4', "0100"},
-                                                                           {'5', "0101"},
-                                                                           {'6', "0110"},
-                                                                           {'7', "0111"},
-                                                                           {'8', "1000"},
-                                                                           {'9', "1001"},
-                                                                           {'a', "1010"},
-                                                                           {'b', "1011"},
-                                                                           {'c', "1100"},
-                                                                           {'d', "1101"},
-                                                                           {'e', "1110"},
-                                                                           {'f', "1111"}};
+static const std::map<char, core_strings::case_insensitive_string> oct_to_bin = {{'0', "000"}, {'1', "001"}, {'2', "010"}, {'3', "011"}, {'4', "100"}, {'5', "101"}, {'6', "110"}, {'7', "111"}};
+static const std::map<char, core_strings::case_insensitive_string> hex_to_bin = {{'0', "0000"},
+                                                                                 {'1', "0001"},
+                                                                                 {'2', "0010"},
+                                                                                 {'3', "0011"},
+                                                                                 {'4', "0100"},
+                                                                                 {'5', "0101"},
+                                                                                 {'6', "0110"},
+                                                                                 {'7', "0111"},
+                                                                                 {'8', "1000"},
+                                                                                 {'9', "1001"},
+                                                                                 {'a', "1010"},
+                                                                                 {'b', "1011"},
+                                                                                 {'c', "1100"},
+                                                                                 {'d', "1101"},
+                                                                                 {'e', "1110"},
+                                                                                 {'f', "1111"}};
 
-core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(token<core_strings::case_insensitive_string>& value_token)
+core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(const token<core_strings::case_insensitive_string>& value_token)
 {
-    auto line_number = value_token.number;
-    auto value       = core_utils::to_lower_t(core_utils::replace_t(value_token.string, core_strings::case_insensitive_string("_"), core_strings::case_insensitive_string("")));
+    const auto line_number = value_token.number;
+    const auto value       = core_utils::to_lower_t(core_utils::replace_t(value_token.string, core_strings::case_insensitive_string("_"), core_strings::case_insensitive_string("")));
 
     char prefix;
     core_strings::case_insensitive_string number;
@@ -1092,7 +1091,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
             {
                 if (c >= '0' && c <= '7')
                 {
-                    res += oct_to_bin[c];
+                    res += oct_to_bin.at(c);
                 }
                 else
                 {
@@ -1132,7 +1131,7 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
             {
                 if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
                 {
-                    res += hex_to_bin[c];
+                    res += hex_to_bin.at(c);
                 }
                 else
                 {
@@ -1152,10 +1151,10 @@ core_strings::case_insensitive_string hdl_parser_vhdl::get_bin_from_literal(toke
     return res;
 }
 
-core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(token<core_strings::case_insensitive_string>& value_token)
+core_strings::case_insensitive_string hdl_parser_vhdl::get_hex_from_literal(const token<core_strings::case_insensitive_string>& value_token)
 {
-    auto line_number = value_token.number;
-    auto value       = core_utils::to_lower_t(core_utils::replace_t(value_token.string, core_strings::case_insensitive_string("_"), core_strings::case_insensitive_string("")));
+    const auto line_number = value_token.number;
+    const auto value       = core_utils::to_lower_t(core_utils::replace_t(value_token.string, core_strings::case_insensitive_string("_"), core_strings::case_insensitive_string("")));
 
     i32 len = -1;
     char prefix;

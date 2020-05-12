@@ -47,7 +47,7 @@ bool hdl_parser_verilog::parse()
 
 bool hdl_parser_verilog::tokenize()
 {
-    std::string delimiters = ",()[]{}\\#*: ;=.";
+    const std::string delimiters = ",()[]{}\\#*: ;=.";
     std::string current_token;
     u32 line_number = 0;
 
@@ -153,8 +153,8 @@ bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attrib
     std::map<std::string, std::string> internal_attributes;
 
     m_token_stream.consume("module", true);
-    u32 line_number         = m_token_stream.peek().number;
-    std::string entity_name = m_token_stream.consume();
+    const auto line_number        = m_token_stream.peek().number;
+    const std::string entity_name = m_token_stream.consume();
 
     // verify entity name
     if (m_entities.find(entity_name) != m_entities.end())
@@ -244,21 +244,21 @@ bool hdl_parser_verilog::parse_entity(std::map<std::string, std::string>& attrib
 void hdl_parser_verilog::parse_port_list(std::set<std::string>& port_names)
 {
     m_token_stream.consume("(", true);
-    auto ports = m_token_stream.extract_until(")");
+    auto ports_str = m_token_stream.extract_until(")");
     m_token_stream.consume(")", true);
 
-    while (ports.remaining() > 0)
+    while (ports_str.remaining() > 0)
     {
-        port_names.insert(ports.consume().string);
-        ports.consume(",", ports.remaining() > 0);
+        port_names.insert(ports_str.consume().string);
+        ports_str.consume(",", ports_str.remaining() > 0);
     }
 }
 
 bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::string>& port_names, std::map<std::string, std::string>& attributes)
 {
-    i32 line_number           = m_token_stream.peek().number;
-    std::string direction_str = m_token_stream.consume();
-    auto ports                = parse_signal_list();
+    const auto line_number   = m_token_stream.peek().number;
+    const auto direction_str = m_token_stream.consume().string;
+    auto ports               = parse_signal_list();
 
     port_direction direction;
     if (direction_str == "input")
@@ -285,30 +285,25 @@ bool hdl_parser_verilog::parse_port_definition(entity& e, const std::set<std::st
         return false;
     }
 
-    // assign attributes to signals
-    if (!attributes.empty())
+    for (auto& p : ports)
     {
-        for (auto& p : ports)
+        // check port name against port declarations
+        if (port_names.find(p.first) == port_names.end())
         {
-            for (const auto& [attribute_name, attribute_value] : attributes)
-            {
-                p.second.add_attribute(attribute_name, "unknown", attribute_value);
-            }
-        }
-
-        attributes.clear();
-    }
-
-    for (auto& port : ports)
-    {
-        if (port_names.find(port.first) == port_names.end())
-        {
-            log_error("hdl_parser", "port name '{}' in line {} has not been declared in entity port list", port.first, line_number);
+            log_error("hdl_parser", "port name '{}' in line {} has not been declared in entity port list", p.first, line_number);
             return false;
         }
 
-        e.add_port(direction, port.second);
+        // assign port attributes
+        for (const auto& [attribute_name, attribute_value] : attributes)
+        {
+            p.second.add_attribute(attribute_name, "unknown", attribute_value);
+        }
+
+        e.add_port(direction, p.second);
     }
+
+    attributes.clear();
 
     return true;
 }
@@ -346,7 +341,7 @@ bool hdl_parser_verilog::parse_signal_definition(entity& e, std::map<std::string
 
 bool hdl_parser_verilog::parse_assign(entity& e)
 {
-    auto line_number = m_token_stream.peek().number;
+    const auto line_number = m_token_stream.peek().number;
     m_token_stream.consume("assign", true);
     auto left_str = m_token_stream.extract_until("=");
     m_token_stream.consume("=", true);
@@ -354,8 +349,8 @@ bool hdl_parser_verilog::parse_assign(entity& e)
     m_token_stream.consume(";", true);
 
     // extract assignments for each bit
-    auto left_parts  = get_assignment_signals(e, left_str, false);
-    auto right_parts = get_assignment_signals(e, right_str, true);
+    const auto left_parts  = get_assignment_signals(e, left_str, false);
+    const auto right_parts = get_assignment_signals(e, right_str, true);
 
     // verify correctness
     if (!left_parts.has_value() || !right_parts.has_value())
@@ -384,7 +379,7 @@ bool hdl_parser_verilog::parse_attribute(std::map<std::string, std::string>& att
     // extract attributes
     do
     {
-        std::string attribute_name = attribute_str.consume().string;
+        const std::string attribute_name = attribute_str.consume().string;
         std::string attribute_value;
 
         // attribute value specified?
@@ -408,8 +403,8 @@ bool hdl_parser_verilog::parse_attribute(std::map<std::string, std::string>& att
 
 bool hdl_parser_verilog::parse_instance(entity& e, std::map<std::string, std::string>& attributes)
 {
-    u32 line_number           = m_token_stream.peek().number;
-    std::string instance_type = m_token_stream.consume();
+    const auto line_number   = m_token_stream.peek().number;
+    const auto instance_type = m_token_stream.consume().string;
     instance inst(line_number, instance_type);
 
     // parse generics map
@@ -422,7 +417,7 @@ bool hdl_parser_verilog::parse_instance(entity& e, std::map<std::string, std::st
     }
 
     // parse instance name
-    std::string instance_name = m_token_stream.consume();
+    const auto instance_name = m_token_stream.consume().string;
     inst.set_name(instance_name);
 
     // parse port map
@@ -474,8 +469,8 @@ bool hdl_parser_verilog::parse_port_assign(entity& e, instance& inst)
         // check if port unconnected
         if (right_str.size() != 0)
         {
-            signal s(left_str.number, left_str.string, {}, false, false);
-            auto right_parts = get_assignment_signals(e, right_str, true);
+            const signal s(left_str.number, left_str.string, {}, false, false);
+            const auto right_parts = get_assignment_signals(e, right_str, true);
 
             // verify correctness
             if (!right_parts.has_value())
@@ -502,11 +497,11 @@ bool hdl_parser_verilog::parse_generic_assign(instance& inst)
     {
         std::string value, data_type;
 
-        auto line_number = generic_str.peek().number;
+        const auto line_number = generic_str.peek().number;
         generic_str.consume(".", true);
-        auto lhs = generic_str.join_until("(", "");
+        const auto lhs = generic_str.join_until("(", "");
         generic_str.consume("(", true);
-        auto rhs = generic_str.join_until(")", "");
+        const auto rhs = generic_str.join_until(")", "");
         generic_str.consume(")", true);
         generic_str.consume(",", generic_str.remaining() > 0);
 
@@ -572,9 +567,9 @@ void hdl_parser_verilog::remove_comments(std::string& line, bool& multi_line_com
             break;
         }
 
-        auto single_line_comment_begin = line.find("//");
-        auto multi_line_comment_begin  = line.find("/*");
-        auto multi_line_comment_end    = line.find("*/");
+        const auto single_line_comment_begin = line.find("//");
+        const auto multi_line_comment_begin  = line.find("/*");
+        const auto multi_line_comment_end    = line.find("*/");
 
         std::string begin = "";
         std::string end   = "";
@@ -632,11 +627,11 @@ std::vector<u32> hdl_parser_verilog::parse_range(token_stream<std::string>& rang
         return {(u32)std::stoi(range_str.consume().string)};
     }
 
-    int start = std::stoi(range_str.consume().string);
+    const int start = std::stoi(range_str.consume().string);
     range_str.consume(":", true);
-    int end = std::stoi(range_str.consume().string);
+    const int end = std::stoi(range_str.consume().string);
 
-    int direction = (start <= end) ? 1 : -1;
+    const int direction = (start <= end) ? 1 : -1;
 
     std::vector<u32> res;
     for (int i = start; i != end + direction; i += direction)
@@ -657,7 +652,7 @@ std::map<std::string, hdl_parser_verilog::signal> hdl_parser_verilog::parse_sign
     // extract bounds
     while (signal_str.consume("["))
     {
-        auto range = parse_range(signal_str);
+        const auto range = parse_range(signal_str);
         signal_str.consume("]", true);
 
         ranges.emplace_back(range);
@@ -666,7 +661,7 @@ std::map<std::string, hdl_parser_verilog::signal> hdl_parser_verilog::parse_sign
     // extract names
     do
     {
-        auto signal_name = signal_str.consume();
+        const auto signal_name = signal_str.consume();
 
         signal s(signal_name.number, signal_name.string, ranges);
         signals.emplace(signal_name, s);
@@ -710,9 +705,9 @@ std::optional<std::pair<std::vector<hdl_parser_verilog::signal>, i32>> hdl_parse
 
     for (auto& part_stream : parts)
     {
-        auto signal_name_token  = part_stream.consume();
-        i32 line_number         = signal_name_token.number;
-        std::string signal_name = signal_name_token;
+        const auto signal_name_token = part_stream.consume();
+        const auto line_number       = signal_name_token.number;
+        auto signal_name             = signal_name_token.string;
         std::vector<std::vector<u32>> ranges;
         bool is_binary = false;
 
@@ -740,11 +735,11 @@ std::optional<std::pair<std::vector<hdl_parser_verilog::signal>, i32>> hdl_parse
 
             const auto& signals = e.get_signals();
             const auto& ports   = e.get_ports();
-            if (auto signal_it = signals.find(signal_name); signal_it != signals.end())
+            if (const auto signal_it = signals.find(signal_name); signal_it != signals.end())
             {
                 reference_ranges = signal_it->second.get_ranges();
             }
-            else if (auto port_it = ports.find(signal_name); port_it != ports.end())
+            else if (const auto port_it = ports.find(signal_name); port_it != ports.end())
             {
                 reference_ranges = port_it->second.second.get_ranges();
             }
@@ -783,28 +778,28 @@ std::optional<std::pair<std::vector<hdl_parser_verilog::signal>, i32>> hdl_parse
     return std::make_pair(result, size);
 }
 
-static std::map<char, std::string> oct_to_bin = {{'0', "000"}, {'1', "001"}, {'2', "010"}, {'3', "011"}, {'4', "100"}, {'5', "101"}, {'6', "110"}, {'7', "111"}};
-static std::map<char, std::string> hex_to_bin = {{'0', "0000"},
-                                                 {'1', "0001"},
-                                                 {'2', "0010"},
-                                                 {'3', "0011"},
-                                                 {'4', "0100"},
-                                                 {'5', "0101"},
-                                                 {'6', "0110"},
-                                                 {'7', "0111"},
-                                                 {'8', "1000"},
-                                                 {'9', "1001"},
-                                                 {'a', "1010"},
-                                                 {'b', "1011"},
-                                                 {'c', "1100"},
-                                                 {'d', "1101"},
-                                                 {'e', "1110"},
-                                                 {'f', "1111"}};
+static const std::map<char, std::string> oct_to_bin = {{'0', "000"}, {'1', "001"}, {'2', "010"}, {'3', "011"}, {'4', "100"}, {'5', "101"}, {'6', "110"}, {'7', "111"}};
+static const std::map<char, std::string> hex_to_bin = {{'0', "0000"},
+                                                       {'1', "0001"},
+                                                       {'2', "0010"},
+                                                       {'3', "0011"},
+                                                       {'4', "0100"},
+                                                       {'5', "0101"},
+                                                       {'6', "0110"},
+                                                       {'7', "0111"},
+                                                       {'8', "1000"},
+                                                       {'9', "1001"},
+                                                       {'a', "1010"},
+                                                       {'b', "1011"},
+                                                       {'c', "1100"},
+                                                       {'d', "1101"},
+                                                       {'e', "1110"},
+                                                       {'f', "1111"}};
 
-std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_token)
+std::string hdl_parser_verilog::get_bin_from_literal(const token<std::string>& value_token)
 {
-    auto line_number  = value_token.number;
-    std::string value = core_utils::to_lower(core_utils::replace(value_token.string, "_", ""));
+    const auto line_number = value_token.number;
+    const auto value       = core_utils::to_lower(core_utils::replace(value_token.string, "_", ""));
 
     i32 len = -1;
     std::string prefix;
@@ -851,7 +846,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
             {
                 if (c >= '0' && c <= '7')
                 {
-                    res += oct_to_bin[c];
+                    res += oct_to_bin.at(c);
                 }
                 else
                 {
@@ -890,7 +885,7 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
             {
                 if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
                 {
-                    res += hex_to_bin[c];
+                    res += hex_to_bin.at(c);
                 }
                 else
                 {
@@ -919,10 +914,10 @@ std::string hdl_parser_verilog::get_bin_from_literal(token<std::string>& value_t
     return res;
 }
 
-std::string hdl_parser_verilog::get_hex_from_literal(token<std::string>& value_token)
+std::string hdl_parser_verilog::get_hex_from_literal(const token<std::string>& value_token)
 {
-    auto line_number = value_token.number;
-    auto value       = core_utils::to_lower(core_utils::replace(value_token, "_", ""));
+    const auto line_number = value_token.number;
+    const auto value       = core_utils::to_lower(core_utils::replace(value_token.string, "_", ""));
 
     i32 len = -1;
     std::string prefix;

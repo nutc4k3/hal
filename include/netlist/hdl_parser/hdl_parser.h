@@ -122,21 +122,21 @@ public:
                 auto& port_assignments = inst.get_port_assignments();
 
                 // instance of entity
-                if (auto entity_it = m_entities.find(inst.get_type()); entity_it != m_entities.end())
+                if (const auto entity_it = m_entities.find(inst.get_type()); entity_it != m_entities.end())
                 {
                     // fill in port width
-                    auto& entity_ports = entity_it->second.get_ports();
+                    const auto& entity_ports = entity_it->second.get_ports();
 
                     for (auto& [port, assignments] : port_assignments)
                     {
                         if (!port.is_ranges_known())
                         {
-                            if (auto port_it = entity_ports.find(port.get_name()); port_it != entity_ports.end())
+                            if (const auto port_it = entity_ports.find(port.get_name()); port_it != entity_ports.end())
                             {
                                 port.set_ranges(port_it->second.second.get_ranges());
 
-                                i32 left_size  = port.get_size();
-                                i32 right_size = 0;
+                                const i32 left_size = port.get_size();
+                                i32 right_size      = 0;
                                 for (const auto& s : assignments)
                                 {
                                     right_size += s.get_size();
@@ -158,7 +158,7 @@ public:
                     }
                 }
                 // instance of gate type
-                else if (auto gate_it = m_tmp_gate_types.find(inst.get_type()); gate_it != m_tmp_gate_types.end())
+                else if (const auto gate_it = m_tmp_gate_types.find(inst.get_type()); gate_it != m_tmp_gate_types.end())
                 {
                     std::map<T, std::vector<u32>> pin_groups;
                     if constexpr (std::is_same<T, std::string>::value)
@@ -183,7 +183,7 @@ public:
 
                     for (auto& [port, assignments] : port_assignments)
                     {
-                        if (auto pin_it = pin_groups.find(port.get_name()); pin_it != pin_groups.end())
+                        if (const auto pin_it = pin_groups.find(port.get_name()); pin_it != pin_groups.end())
                         {
                             if (!pin_it->second.empty())
                             {
@@ -200,8 +200,8 @@ public:
                             return nullptr;
                         }
 
-                        i32 left_size  = port.get_size();
-                        i32 right_size = 0;
+                        const i32 left_size = port.get_size();
+                        i32 right_size      = 0;
                         for (const auto& s : assignments)
                         {
                             right_size += s.get_size();
@@ -247,18 +247,16 @@ public:
         // add global GND gate if required by any instance
         if (!m_zero_net->get_destinations().empty())
         {
-            auto gnd_type   = m_netlist->get_gate_library()->get_gnd_gate_types().begin()->second;
-            auto output_pin = gnd_type->get_output_pins().at(0);
-            auto gnd        = m_netlist->create_gate(m_netlist->get_unique_gate_id(), gnd_type, "global_gnd");
+            const auto gnd_type   = m_netlist->get_gate_library()->get_gnd_gate_types().begin()->second;
+            const auto output_pin = gnd_type->get_output_pins().at(0);
+            const auto gnd        = m_netlist->create_gate(m_netlist->get_unique_gate_id(), gnd_type, "global_gnd");
 
             if (!m_netlist->mark_gnd_gate(gnd))
             {
                 return nullptr;
             }
 
-            auto gnd_net = m_net_by_name.find("'0'")->second;
-
-            if (!gnd_net->add_source(gnd, output_pin))
+            if (auto gnd_net = m_net_by_name.find("'0'")->second; !gnd_net->add_source(gnd, output_pin))
             {
                 return nullptr;
             }
@@ -271,18 +269,16 @@ public:
         // add global VCC gate if required by any instance
         if (!m_one_net->get_destinations().empty())
         {
-            auto vcc_type   = m_netlist->get_gate_library()->get_vcc_gate_types().begin()->second;
-            auto output_pin = vcc_type->get_output_pins().at(0);
-            auto vcc        = m_netlist->create_gate(m_netlist->get_unique_gate_id(), vcc_type, "global_vcc");
+            const auto vcc_type   = m_netlist->get_gate_library()->get_vcc_gate_types().begin()->second;
+            const auto output_pin = vcc_type->get_output_pins().at(0);
+            const auto vcc        = m_netlist->create_gate(m_netlist->get_unique_gate_id(), vcc_type, "global_vcc");
 
             if (!m_netlist->mark_vcc_gate(vcc))
             {
                 return nullptr;
             }
 
-            auto vcc_net = m_net_by_name.find("'1'")->second;
-
-            if (!vcc_net->add_source(vcc, output_pin))
+            if (auto vcc_net = m_net_by_name.find("'1'")->second; !vcc_net->add_source(vcc, output_pin))
             {
                 return nullptr;
             }
@@ -294,8 +290,8 @@ public:
 
         for (const auto& net : m_netlist->get_nets())
         {
-            bool no_source      = net->get_num_of_sources() == 0 && !net->is_global_input_net();
-            bool no_destination = net->get_num_of_destinations() == 0 && !net->is_global_output_net();
+            const bool no_source      = net->get_num_of_sources() == 0 && !net->is_global_input_net();
+            const bool no_destination = net->get_num_of_destinations() == 0 && !net->is_global_output_net();
             if (no_source && no_destination)
             {
                 m_netlist->delete_net(net);
@@ -316,113 +312,113 @@ protected:
     class signal
     {
     public:
-        signal(u32 line_number, T name, std::vector<std::vector<u32>> ranges = {}, bool binary = false, bool ranges_known = true)
-            : _line_number(line_number), _name(name), _ranges(ranges), _binary(binary), _ranges_known(ranges_known)
+        signal(u32 line_number, const T& name, const std::vector<std::vector<u32>>& ranges = {}, bool binary = false, bool ranges_known = true)
+            : m_line_number(line_number), m_name(name), m_ranges(ranges), m_binary(binary), m_ranges_known(ranges_known)
         {
             compute_size();
         }
 
         u32 get_line_number() const
         {
-            return _line_number;
+            return m_line_number;
         }
 
         const T& get_name() const
         {
-            return _name;
+            return m_name;
         }
 
         i32 get_size() const
         {
-            return _size;
+            return m_size;
         }
 
-        const std::vector<std::vector<u32>> get_ranges() const
+        const std::vector<std::vector<u32>>& get_ranges() const
         {
-            return _ranges;
+            return m_ranges;
         }
 
-        void set_ranges(std::vector<std::vector<u32>> ranges)
+        void set_ranges(const std::vector<std::vector<u32>>& ranges)
         {
-            _ranges       = ranges;
-            _ranges_known = true;
+            m_ranges       = ranges;
+            m_ranges_known = true;
             compute_size();
         }
 
         void add_attribute(const std::string& name, const std::string& type, const std::string& value)
         {
-            _attributes.push_back(std::make_tuple(name, type, value));
+            m_attributes.push_back(std::make_tuple(name, type, value));
         }
 
-        const std::vector<std::tuple<std::string, std::string, std::string>> get_attributes() const
+        const std::vector<std::tuple<std::string, std::string, std::string>>& get_attributes() const
         {
-            return _attributes;
+            return m_attributes;
         }
 
         bool is_binary() const
         {
-            return _binary;
+            return m_binary;
         }
 
         bool is_ranges_known() const
         {
-            return _ranges_known;
+            return m_ranges_known;
         }
 
         bool operator<(const signal& other) const
         {
             // there may be two assignments to the same signal using different bounds
             // without checking bounds, two such signals would be considered equal
-            return (_name < other._name) && (_ranges < other._ranges);
+            return (m_name < other._name) && (m_ranges < other._ranges);
         }
 
     private:
-        u32 _line_number;
+        u32 m_line_number;
 
         // name (may either be the identifier of the signal or a binary string in case of direct assignments)
-        T _name;
+        T m_name;
 
         // number of bits belonging to the signal (-1 implies "unknown")
-        i32 _size;
+        i32 m_size;
 
         // ranges
-        std::vector<std::vector<u32>> _ranges;
+        std::vector<std::vector<u32>> m_ranges;
 
         // attributes: set(attribute_name, attribute_type, attribute_value)
-        std::vector<std::tuple<std::string, std::string, std::string>> _attributes;
+        std::vector<std::tuple<std::string, std::string, std::string>> m_attributes;
 
         // is binary string?
-        bool _binary = false;
+        bool m_binary = false;
 
         // are bounds already known? (should only be unknown for left side of port assignments)
-        bool _ranges_known = true;
+        bool m_ranges_known = true;
 
         void compute_size()
         {
-            if (_ranges_known)
+            if (m_ranges_known)
             {
-                if (_binary)
+                if (m_binary)
                 {
-                    _size = _name.size();
+                    m_size = m_name.size();
                 }
-                else if (_ranges.empty())
+                else if (m_ranges.empty())
                 {
-                    _size = 1;
+                    m_size = 1;
                 }
                 else
                 {
-                    u32 dimension = _ranges.size();
-                    _size         = _ranges.at(0).size();
+                    u32 dimension = m_ranges.size();
+                    m_size        = m_ranges.at(0).size();
 
                     for (u32 i = 1; i < dimension; i++)
                     {
-                        _size *= _ranges.at(i).size();
+                        m_size *= m_ranges.at(i).size();
                     }
                 }
             }
             else
             {
-                _size = -1;
+                m_size = -1;
             }
         }
     };
@@ -430,87 +426,87 @@ protected:
     class instance
     {
     public:
-        instance(u32 line_number, const T& type, const T& name = "") : _line_number(line_number), _type(type), _name(name)
+        instance(u32 line_number, const T& type, const T& name = "") : m_line_number(line_number), m_type(type), m_name(name)
         {
         }
 
         u32 get_line_number() const
         {
-            return _line_number;
+            return m_line_number;
         }
 
-        const T get_type() const
+        const T& get_type() const
         {
-            return _type;
+            return m_type;
         }
 
         void set_name(const T& name)
         {
-            _name = name;
+            m_name = name;
         }
 
-        const T get_name() const
+        const T& get_name() const
         {
-            return _name;
+            return m_name;
         }
 
         void add_port_assignment(const signal& port, const std::vector<signal>& assignment)
         {
-            _port_assignments.push_back(std::make_pair(port, assignment));
+            m_port_assignments.push_back(std::make_pair(port, assignment));
         }
 
         std::vector<std::pair<signal, std::vector<signal>>>& get_port_assignments()
         {
-            return _port_assignments;
+            return m_port_assignments;
         }
 
         const std::vector<std::pair<signal, std::vector<signal>>>& get_port_assignments() const
         {
-            return _port_assignments;
+            return m_port_assignments;
         }
 
         void add_generic_assignment(const std::string& generic, const std::string& data_type, const std::string& assignment)
         {
-            _generic_assignments.emplace(generic, std::make_pair(data_type, assignment));
+            m_generic_assignments.emplace(generic, std::make_pair(data_type, assignment));
         }
 
         const std::map<std::string, std::pair<std::string, std::string>>& get_generic_assignments() const
         {
-            return _generic_assignments;
+            return m_generic_assignments;
         }
 
         void add_attribute(const std::string& name, const std::string& type, const std::string& value)
         {
-            _attributes.push_back(std::make_tuple(name, type, value));
+            m_attributes.push_back(std::make_tuple(name, type, value));
         }
 
         const std::vector<std::tuple<std::string, std::string, std::string>>& get_attributes() const
         {
-            return _attributes;
+            return m_attributes;
         }
 
         bool operator<(const instance& other) const
         {
-            return _name < other._name;
+            return m_name < other._name;
         }
 
     private:
-        u32 _line_number;
+        u32 m_line_number;
 
         // type
-        T _type;
+        T m_type;
 
         // name
-        T _name;
+        T m_name;
 
         // port assignments: port_name -> (port_signal, assignment_signals)
-        std::vector<std::pair<signal, std::vector<signal>>> _port_assignments;
+        std::vector<std::pair<signal, std::vector<signal>>> m_port_assignments;
 
         // generic assignments: generic_name -> (data_type, data_value)
-        std::map<std::string, std::pair<std::string, std::string>> _generic_assignments;
+        std::map<std::string, std::pair<std::string, std::string>> m_generic_assignments;
 
         // attributes: set(attribute_name, attribute_type, attribute_value)
-        std::vector<std::tuple<std::string, std::string, std::string>> _attributes;
+        std::vector<std::tuple<std::string, std::string, std::string>> m_attributes;
     };
 
     class entity
@@ -520,113 +516,113 @@ protected:
         {
         }
 
-        entity(u32 line_number, T name) : _line_number(line_number), _name(name)
+        entity(u32 line_number, const T& name) : m_line_number(line_number), m_name(name)
         {
         }
 
         u32 get_line_number() const
         {
-            return _line_number;
+            return m_line_number;
         }
 
         const T& get_name() const
         {
-            return _name;
+            return m_name;
         }
 
         void add_port(port_direction direction, const signal& s)
         {
-            _ports.emplace(s.get_name(), std::make_pair(direction, s));
+            m_ports.emplace(s.get_name(), std::make_pair(direction, s));
         }
 
         std::map<T, std::pair<port_direction, signal>>& get_ports()
         {
-            return _ports;
+            return m_ports;
         }
 
         const std::map<T, std::pair<port_direction, signal>>& get_ports() const
         {
-            return _ports;
+            return m_ports;
         }
 
         void add_signal(const signal& s)
         {
-            _signals.emplace(s.get_name(), s);
+            m_signals.emplace(s.get_name(), s);
         }
 
         void add_signals(const std::map<T, signal>& signals)
         {
-            _signals.insert(signals.begin(), signals.end());
+            m_signals.insert(signals.begin(), signals.end());
         }
 
         std::map<T, signal>& get_signals()
         {
-            return _signals;
+            return m_signals;
         }
 
         const std::map<T, signal>& get_signals() const
         {
-            return _signals;
+            return m_signals;
         }
 
         void add_assignment(const std::vector<signal>& s, const std::vector<signal>& assignment)
         {
-            _assignments.push_back(std::make_pair(s, assignment));
+            m_assignments.push_back(std::make_pair(s, assignment));
         }
 
         const std::vector<std::pair<std::vector<signal>, std::vector<signal>>>& get_assignments() const
         {
-            return _assignments;
+            return m_assignments;
         }
 
         void add_instance(const instance& inst)
         {
-            _instances.emplace(inst.get_name(), inst);
+            m_instances.emplace(inst.get_name(), inst);
         }
 
         std::map<T, instance>& get_instances()
         {
-            return _instances;
+            return m_instances;
         }
 
         const std::map<T, instance>& get_instances() const
         {
-            return _instances;
+            return m_instances;
         }
 
         void add_attribute(const std::string& name, const std::string& type, const std::string& value)
         {
-            _attributes.push_back(std::make_tuple(name, type, value));
+            m_attributes.push_back(std::make_tuple(name, type, value));
         }
 
         const std::vector<std::tuple<std::string, std::string, std::string>>& get_attributes() const
         {
-            return _attributes;
+            return m_attributes;
         }
 
         void initialize(hdl_parser<T>* parser)
         {
-            if (_initialized)
+            if (m_initialized)
             {
-                _expanded_ports.clear();
-                _expanded_signals.clear();
-                _expanded_assignments.clear();
+                m_expanded_ports.clear();
+                m_expanded_signals.clear();
+                m_expanded_assignments.clear();
             }
 
-            for (const auto& [port_name, p] : _ports)
+            for (const auto& [port_name, p] : m_ports)
             {
-                _expanded_ports.emplace(port_name, parser->expand_signal(p.second));
+                m_expanded_ports.emplace(port_name, parser->expand_signal(p.second));
             }
 
-            for (const auto& [signal_name, s] : _signals)
+            for (const auto& [signal_name, s] : m_signals)
             {
-                _expanded_signals.emplace(signal_name, parser->expand_signal(s));
+                m_expanded_signals.emplace(signal_name, parser->expand_signal(s));
             }
 
             std::vector<T> expanded_signals;
             std::vector<T> expanded_assignments;
 
-            for (const auto& [signals, assignments] : _assignments)
+            for (const auto& [signals, assignments] : m_assignments)
             {
                 for (const auto& s : signals)
                 {
@@ -650,75 +646,77 @@ protected:
                 }
             }
 
-            std::transform(expanded_signals.begin(), expanded_signals.end(), expanded_assignments.begin(), std::inserter(_expanded_assignments, _expanded_assignments.end()), [](T s, T a) {
-                return std::make_pair(s, a);
-            });
+            std::transform(
+                expanded_signals.begin(), expanded_signals.end(), expanded_assignments.begin(), std::inserter(m_expanded_assignments, m_expanded_assignments.end()), [](const T& s, const T& a) {
+                    return std::make_pair(s, a);
+                });
 
-            _initialized = true;
+            m_initialized = true;
         }
 
         bool is_initialized() const
         {
-            return _initialized;
+            return m_initialized;
         }
 
         const std::map<T, std::vector<T>>& get_expanded_ports() const
         {
-            return _expanded_ports;
+            return m_expanded_ports;
         }
 
         const std::map<T, std::vector<T>>& get_expanded_signals() const
         {
-            return _expanded_signals;
+            return m_expanded_signals;
         }
 
         const std::map<T, T>& get_expanded_assignments() const
         {
-            return _expanded_assignments;
+            return m_expanded_assignments;
         }
 
         bool operator<(const entity& other) const
         {
-            return _name < other._name;
+            return m_name < other.get_name();
         }
 
     private:
-        u32 _line_number;
+        u32 m_line_number;
 
         // name
-        T _name;
+        T m_name;
 
         // ports: port_name -> (direction, signal)
-        std::map<T, std::pair<port_direction, signal>> _ports;
+        std::map<T, std::pair<port_direction, signal>> m_ports;
 
         // signals: signal_name -> signal
-        std::map<T, signal> _signals;
+        std::map<T, signal> m_signals;
 
         // assignments: set(lhs, rhs)
-        std::vector<std::pair<std::vector<signal>, std::vector<signal>>> _assignments;
+        std::vector<std::pair<std::vector<signal>, std::vector<signal>>> m_assignments;
 
         // instances: instance_name -> instance
-        std::map<T, instance> _instances;
+        std::map<T, instance> m_instances;
 
         // attributes: set(attribute_name, attribute_type, attribute_value)
-        std::vector<std::tuple<std::string, std::string, std::string>> _attributes;
+        std::vector<std::tuple<std::string, std::string, std::string>> m_attributes;
 
         // is already initialized?
-        bool _initialized = false;
+        bool m_initialized = false;
 
         // expanded ports: port_name -> expanded_ports
-        std::map<T, std::vector<T>> _expanded_ports;
+        std::map<T, std::vector<T>> m_expanded_ports;
 
         // expanded signals: signal_name -> expanded_signals
-        std::map<T, std::vector<T>> _expanded_signals;
+        std::map<T, std::vector<T>> m_expanded_signals;
 
         // expanded assignments: expanded_signal_name -> expanded_assignment_name
-        std::map<T, T> _expanded_assignments;
+        std::map<T, T> m_expanded_assignments;
     };
 
     // stores the input stream to the file
     std::stringstream& m_fs;
 
+    // map of all entities
     std::map<T, entity> m_entities;
     T m_last_entity;
 
@@ -740,7 +738,6 @@ private:
 
     // buffer gate types
     std::map<T, std::shared_ptr<const gate_type>> m_tmp_gate_types;
-
     std::map<std::shared_ptr<net>, std::tuple<port_direction, std::string, std::shared_ptr<module>>> m_module_ports;
 
     bool build_netlist(const T& top_module)
@@ -780,7 +777,7 @@ private:
             {
                 m_instance_name_occurrences[inst.first]++;
 
-                if (auto it = m_entities.find(inst.second.get_type()); it != m_entities.end())
+                if (const auto it = m_entities.find(inst.second.get_type()); it != m_entities.end())
                 {
                     q.push(&(it->second));
                 }
@@ -808,22 +805,21 @@ private:
 
         for (const auto& [port_name, port] : top_entity.get_ports())
         {
-            auto direction = port.first;
+            const auto direction = port.first;
 
             for (const auto& expanded_name : expanded_ports.at(port_name))
             {
-                std::shared_ptr<net> new_net;
-                new_net                      = m_netlist->create_net(core_strings::to_std_string<T>(expanded_name));
-                m_net_by_name[expanded_name] = new_net;
-
-                // for instances, point the ports to the newly generated signals
-                top_assignments[expanded_name] = core_strings::from_std_string<T>(new_net->get_name());
-
+                std::shared_ptr<net> new_net = m_netlist->create_net(core_strings::to_std_string<T>(expanded_name));
                 if (new_net == nullptr)
                 {
                     log_error("hdl_parser", "could not create new net '{}'", expanded_name);
                     return false;
                 }
+
+                m_net_by_name[expanded_name] = new_net;
+
+                // for instances, point the ports to the newly generated signals
+                top_assignments[expanded_name] = core_strings::from_std_string<T>(new_net->get_name());
 
                 if (direction == port_direction::IN || direction == port_direction::INOUT)
                 {
@@ -833,6 +829,7 @@ private:
                         return false;
                     }
                 }
+
                 if (direction == port_direction::OUT || direction == port_direction::INOUT)
                 {
                     if (!new_net->mark_global_output_net())
@@ -915,7 +912,7 @@ private:
                     }
 
                     // merge generics and attributes
-                    for (const auto& it : slave_net->get_data())
+                    for (const auto it : slave_net->get_data())
                     {
                         if (!master_net->set_data(std::get<0>(it.first), std::get<1>(it.first), std::get<0>(it.second), std::get<1>(it.second)))
                         {
@@ -924,7 +921,7 @@ private:
                     }
 
                     // update module ports
-                    if (const auto& it = m_module_ports.find(slave_net); it != m_module_ports.end())
+                    if (const auto it = m_module_ports.find(slave_net); it != m_module_ports.end())
                     {
                         m_module_ports[master_net] = it->second;
                         m_module_ports.erase(it);
@@ -950,9 +947,9 @@ private:
         // assign module ports
         for (const auto& [net, port_info] : m_module_ports)
         {
-            auto direction = std::get<0>(port_info);
-            auto port_name = std::get<1>(port_info);
-            auto module    = std::get<2>(port_info);
+            const auto direction = std::get<0>(port_info);
+            const auto port_name = std::get<1>(port_info);
+            auto module          = std::get<2>(port_info);
 
             if (direction == port_direction::IN || direction == port_direction::INOUT)
             {
@@ -973,8 +970,8 @@ private:
         std::map<T, T> signal_alias;
         std::map<T, T> instance_alias;
 
-        const T& entity_inst_name  = entity_inst.get_name();
-        const T& entity_inst_type  = entity_inst.get_type();
+        const T entity_inst_name   = entity_inst.get_name();
+        const T entity_inst_type   = entity_inst.get_type();
         const auto& e              = m_entities.at(entity_inst_type);
         const auto& entity_signals = e.get_signals();
 
@@ -1019,12 +1016,12 @@ private:
         const auto& expanded = e.get_expanded_ports();
         for (const auto& [port_name, port] : e.get_ports())
         {
-            auto direction         = port.first;
+            const auto direction   = port.first;
             const auto& attributes = port.second.get_attributes();
 
             for (const auto& expanded_name : expanded.at(port_name))
             {
-                if (const auto& it = parent_module_assignments.find(expanded_name); it != parent_module_assignments.end())
+                if (const auto it = parent_module_assignments.find(expanded_name); it != parent_module_assignments.end())
                 {
                     auto net            = m_net_by_name.at(it->second);
                     m_module_ports[net] = std::make_tuple(direction, core_strings::to_std_string(expanded_name), module);
@@ -1088,11 +1085,11 @@ private:
             T a = s;
             T b = assignment;
 
-            if (auto parent_it = parent_module_assignments.find(a); parent_it != parent_module_assignments.end())
+            if (const auto parent_it = parent_module_assignments.find(a); parent_it != parent_module_assignments.end())
             {
                 a = parent_it->second;
             }
-            else if (auto alias_it = signal_alias.find(a); alias_it != signal_alias.end())
+            else if (const auto alias_it = signal_alias.find(a); alias_it != signal_alias.end())
             {
                 a = alias_it->second;
             }
@@ -1101,11 +1098,11 @@ private:
                 log_warning("hdl_parser", "no alias for net '{}'", a);
             }
 
-            if (auto parent_it = parent_module_assignments.find(b); parent_it != parent_module_assignments.end())
+            if (const auto parent_it = parent_module_assignments.find(b); parent_it != parent_module_assignments.end())
             {
                 b = parent_it->second;
             }
-            else if (auto alias_it = signal_alias.find(b); alias_it != signal_alias.end())
+            else if (const auto alias_it = signal_alias.find(b); alias_it != signal_alias.end())
             {
                 b = alias_it->second;
             }
@@ -1155,7 +1152,7 @@ private:
 
             for (const auto& [port, assignments] : inst.get_port_assignments())
             {
-                std::vector<T> expanded_port = expand_signal(port);
+                const std::vector<T> expanded_port = expand_signal(port);
                 std::move(expanded_port.begin(), expanded_port.end(), std::back_inserter(expanded_ports));
 
                 for (const auto& s : assignments)
@@ -1175,13 +1172,13 @@ private:
 
             for (unsigned int i = 0; i < expanded_ports.size(); i++)
             {
-                if (auto it = parent_module_assignments.find(expanded_assignments[i]); it != parent_module_assignments.end())
+                if (const auto it = parent_module_assignments.find(expanded_assignments[i]); it != parent_module_assignments.end())
                 {
                     instance_assignments[expanded_ports[i]] = it->second;
                 }
                 else
                 {
-                    if (auto alias_it = signal_alias.find(expanded_assignments[i]); alias_it != signal_alias.end())
+                    if (const auto alias_it = signal_alias.find(expanded_assignments[i]); alias_it != signal_alias.end())
                     {
                         instance_assignments[expanded_ports[i]] = alias_it->second;
                     }
@@ -1207,23 +1204,12 @@ private:
                 }
             }
             // otherwise it has to be an element from the gate library
-            else
+            else if (const auto gate_type_it = m_tmp_gate_types.find(inst_type); gate_type_it != m_tmp_gate_types.end())
             {
                 // create the new gate
                 instance_alias[inst_name] = get_unique_alias(m_instance_name_occurrences, inst_name);
 
-                std::shared_ptr<gate> new_gate;
-
-                if (auto gate_type_it = m_tmp_gate_types.find(inst_type); gate_type_it == m_tmp_gate_types.end())
-                {
-                    log_error("hdl_parser", "could not find gate type '{}' in gate library '{}'", inst_type, m_netlist->get_gate_library()->get_name());
-                    return nullptr;
-                }
-                else
-                {
-                    new_gate = m_netlist->create_gate(gate_type_it->second, core_strings::to_std_string<T>(instance_alias.at(inst_name)));
-                }
-
+                std::shared_ptr<gate> new_gate = m_netlist->create_gate(gate_type_it->second, core_strings::to_std_string<T>(instance_alias.at(inst_name)));
                 if (new_gate == nullptr)
                 {
                     log_error("hdl_parser", "could not instantiate gate '{}' within entity '{}'", inst_name, e.get_name());
@@ -1270,7 +1256,7 @@ private:
                     T pin = port;
 
                     // get the respective net for the assignment
-                    if (const auto& net_it = m_net_by_name.find(assignment); net_it == m_net_by_name.end())
+                    if (const auto net_it = m_net_by_name.find(assignment); net_it == m_net_by_name.end())
                     {
                         log_error("hdl_parser", "signal '{}' of entity '{}' has not been declared", assignment, inst_type);
                         return nullptr;
@@ -1281,14 +1267,14 @@ private:
 
                         // add net src/dst by pin types
                         bool is_input = false;
-                        if (const auto& input_it = std::find(input_pins.begin(), input_pins.end(), port); input_it != input_pins.end())
+                        if (const auto input_it = std::find(input_pins.begin(), input_pins.end(), port); input_it != input_pins.end())
                         {
                             is_input = true;
                             pin      = *input_it;
                         }
 
                         bool is_output = false;
-                        if (const auto& output_it = std::find(output_pins.begin(), output_pins.end(), port); output_it != output_pins.end())
+                        if (const auto output_it = std::find(output_pins.begin(), output_pins.end(), port); output_it != output_pins.end())
                         {
                             is_output = true;
                             pin       = *output_it;
@@ -1312,6 +1298,11 @@ private:
                     }
                 }
             }
+            else
+            {
+                log_error("hdl_parser", "could not find gate type '{}' in gate library '{}'", inst_type, m_netlist->get_gate_library()->get_name());
+                return nullptr;
+            }
 
             // assign instance attributes
             for (const auto& attr : inst.get_attributes())
@@ -1329,7 +1320,7 @@ private:
             }
 
             // process generics
-            for (auto [generic_name, generic] : inst.get_generic_assignments())
+            for (const auto& [generic_name, generic] : inst.get_generic_assignments())
             {
                 if (!container->set_data("generic", generic_name, generic.first, generic.second))
                 {
@@ -1365,7 +1356,7 @@ private:
     {
         std::vector<T> res;
 
-        for (const auto& bin_value : s.get_name())
+        for (auto bin_value : s.get_name())
         {
             res.push_back("'" + T(1, bin_value) + "'");
         }
@@ -1389,7 +1380,7 @@ private:
         {
             for (const auto& index : ranges[dimension])
             {
-                this->expand_signal_recursively(expanded_signal, current_signal + "(" + core_strings::from_std_string<T>(std::to_string(index)) + ")", ranges, dimension + 1);
+                expand_signal_recursively(expanded_signal, current_signal + "(" + core_strings::from_std_string<T>(std::to_string(index)) + ")", ranges, dimension + 1);
             }
         }
         else
