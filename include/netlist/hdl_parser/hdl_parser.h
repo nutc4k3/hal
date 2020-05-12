@@ -337,7 +337,7 @@ protected:
             return _size;
         }
 
-        const std::vector<std::vector<u32>>& get_ranges() const
+        const std::vector<std::vector<u32>> get_ranges() const
         {
             return _ranges;
         }
@@ -354,7 +354,7 @@ protected:
             _attributes.push_back(std::make_tuple(name, type, value));
         }
 
-        const std::vector<std::tuple<std::string, std::string, std::string>>& get_attributes() const
+        const std::vector<std::tuple<std::string, std::string, std::string>> get_attributes() const
         {
             return _attributes;
         }
@@ -430,7 +430,7 @@ protected:
     class instance
     {
     public:
-        instance(u32 line_number, T type, T name = "") : _line_number(line_number), _type(type), _name(name)
+        instance(u32 line_number, const T& type, const T& name = "") : _line_number(line_number), _type(type), _name(name)
         {
         }
 
@@ -439,7 +439,7 @@ protected:
             return _line_number;
         }
 
-        const T& get_type() const
+        const T get_type() const
         {
             return _type;
         }
@@ -449,7 +449,7 @@ protected:
             _name = name;
         }
 
-        const T& get_name() const
+        const T get_name() const
         {
             return _name;
         }
