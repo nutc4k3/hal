@@ -1101,13 +1101,10 @@ EXPECT_TRUE(net_master->is_global_input_net());
     }
 }
 {
-    // TODO deal with global_in not being used
     // Verilog specific: Assign constants ('b0 and 'b1)
     std::stringstream input("module top ("
-                            "  global_in,"
                             "  global_out"
                             " ) ;"
-                            "  input global_in ;"
                             "  output global_out ;"
                             "  wire [0:3] bit_vector ;"
                             "  assign bit_vector = 4'hA ;"
