@@ -32,7 +32,7 @@ endif()
 add_subdirectory(test_utils)
 # --- Currently disabled ---
 #add_subdirectory(core)
-#add_subdirectory(netlist)
+add_subdirectory(netlist)
 #---------------------------
 add_subdirectory(hdl_parser)
 add_subdirectory(hdl_writer)
