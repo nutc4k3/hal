@@ -255,64 +255,66 @@ TEST_F(hdl_parser_vhdl_test, check_whitespace_chaos_){
  */
 TEST_F(hdl_parser_vhdl_test, check_generic_map){
 
-    TEST_START{// Store an instance of all possible data types in one gate
-               std::stringstream input("-- Device\t: device_name\n"
-                                       "entity TEST_Comp is "
-                                       "  port ( "
-                                       "    net_global_input : in STD_LOGIC := 'X'; "
-                                       "  ); "
-                                       "end TEST_Comp; "
-                                       "architecture STRUCTURE of TEST_Comp is "
-                                       "begin"
-                                       "  gate_0 : gate_1_to_1"
-                                       "    generic map("
-                                       "      key_integer => 1234,"
-                                       "      key_floating_point => 1.234,"
-                                       "      key_string => \"test_string\","
-                                       "      key_bit_vector_hex => X\"abc\","    // <- all values are 0xABC
-                                       "      key_bit_vector_dec => D\"2748\","
-                                       "      key_bit_vector_oct => O\"5274\","
-                                       "      key_bit_vector_bin => B\"1010_1011_1100\","
-                                       // -- VHDL specific Data Types:
-                                       "      key_boolean => true,"
-                                       "      key_time => 1.234sec,"
-                                       "      key_bit_value => '1'"
-                                       "    )"
-                                       "    port map ( "
-                                       "      I => net_global_input "
-                                       "    ); "
-                                       "end STRUCTURE;");
-test_def::capture_stdout();
-hdl_parser_vhdl vhdl_parser(input);
-std::shared_ptr<netlist> nl = vhdl_parser.parse_and_instantiate(m_gl);
-if (nl == nullptr)
-{
-    std::cout << test_def::get_captured_stdout();
-}
-else
-{
-    test_def::get_captured_stdout();
-}
+    TEST_START
+        {
+            // Store an instance of all possible data types in one gate
+            std::stringstream input("-- Device\t: device_name\n"
+                                   "entity TEST_Comp is "
+                                   "  port ( "
+                                   "    net_global_input : in STD_LOGIC := 'X'; "
+                                   "  ); "
+                                   "end TEST_Comp; "
+                                   "architecture STRUCTURE of TEST_Comp is "
+                                   "begin"
+                                   "  gate_0 : gate_1_to_1"
+                                   "    generic map("
+                                   "      key_integer => 1234,"
+                                   "      key_floating_point => 1.234,"
+                                   "      key_string => \"test_string\","
+                                   "      key_bit_vector_hex => X\"abc\","    // <- all values are 0xABC
+                                   "      key_bit_vector_dec => D\"2748\","
+                                   "      key_bit_vector_oct => O\"5274\","
+                                   "      key_bit_vector_bin => B\"1010_1011_1100\","
+                                   // -- VHDL specific Data Types:
+                                   "      key_boolean => true,"
+                                   "      key_time => 1.234sec,"
+                                   "      key_bit_value => '1'"
+                                   "    )"
+                                   "    port map ( "
+                                   "      I => net_global_input "
+                                   "    ); "
+                                   "end STRUCTURE;");
+            test_def::capture_stdout();
+            hdl_parser_vhdl vhdl_parser(input);
+            std::shared_ptr<netlist> nl = vhdl_parser.parse_and_instantiate(m_gl);
+            if (nl == nullptr)
+            {
+                std::cout << test_def::get_captured_stdout();
+            }
+            else
+            {
+                test_def::get_captured_stdout();
+            }
 
-ASSERT_NE(nl, nullptr);
+            ASSERT_NE(nl, nullptr);
 
-ASSERT_EQ(nl->get_gates(gate_filter("gate_1_to_1", "gate_0")).size(), 1);
-std::shared_ptr<gate> gate_0 = *nl->get_gates(gate_filter("gate_1_to_1", "gate_0")).begin();
+            ASSERT_EQ(nl->get_gates(gate_filter("gate_1_to_1", "gate_0")).size(), 1);
+            std::shared_ptr<gate> gate_0 = *nl->get_gates(gate_filter("gate_1_to_1", "gate_0")).begin();
 
-// Integers are stored in their hex representation
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_integer"), std::make_tuple("integer", "1234"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_floating_point"), std::make_tuple("floating_point", "1.234"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_string"), std::make_tuple("string", "test_string"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_hex"), std::make_tuple("bit_vector", "abc"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_dec"), std::make_tuple("bit_vector", "abc"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_oct"), std::make_tuple("bit_vector", "abc"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_bin"), std::make_tuple("bit_vector", "abc"));
-// -- VHDL specific Data Types:
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_boolean"), std::make_tuple("boolean", "true"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_time"), std::make_tuple("time", "1.234sec"));
-EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_value"), std::make_tuple("bit_value", "1"));
-}
-TEST_END
+            // Integers are stored in their hex representation
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_integer"), std::make_tuple("integer", "1234"));
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_floating_point"), std::make_tuple("floating_point", "1.234"));
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_string"), std::make_tuple("string", "test_string"));
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_hex"), std::make_tuple("bit_vector", "abc"));
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_dec"), std::make_tuple("bit_vector", "abc"));
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_oct"), std::make_tuple("bit_vector", "abc"));
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_vector_bin"), std::make_tuple("bit_vector", "abc"));
+            // -- VHDL specific Data Types:
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_boolean"), std::make_tuple("boolean", "true"));
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_time"), std::make_tuple("time", "1.234sec"));
+            EXPECT_EQ(gate_0->get_data_by_key("generic", "key_bit_value"), std::make_tuple("bit_value", "1"));
+        }
+    TEST_END
 }
 
 /**
