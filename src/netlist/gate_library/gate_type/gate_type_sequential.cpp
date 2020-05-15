@@ -8,23 +8,6 @@ gate_type_sequential::gate_type_sequential(const std::string& name, base_type bt
     assert(m_base_type == base_type::ff || m_base_type == base_type::latch);
 }
 
-bool gate_type_sequential::do_compare(const gate_type& other) const
-{
-    bool equal    = false;
-    const auto gt = dynamic_cast<const gate_type_sequential*>(&other);
-
-    if (gt)
-    {
-        equal = m_state_pins == gt->get_state_output_pins();
-        equal &= m_inverted_state_pins == gt->get_inverted_state_output_pins();
-        equal &= m_set_reset_behavior == gt->get_set_reset_behavior();
-        equal &= m_init_data_category == gt->get_init_data_category();
-        equal &= m_init_data_identifier == gt->get_init_data_identifier();
-    }
-
-    return equal;
-}
-
 void gate_type_sequential::add_state_output_pin(std::string pin_name)
 {
     if (const auto& it = std::find(m_input_pins.begin(), m_input_pins.end(), pin_name); it != m_input_pins.end())

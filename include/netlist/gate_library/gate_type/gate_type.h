@@ -222,6 +222,4 @@ protected:
 private:
     gate_type(const gate_type&) = delete;               // disable copy-constructor
     gate_type& operator=(const gate_type&) = delete;    // disable copy-assignment
-
-    virtual bool do_compare(const gate_type& other) const;
 };

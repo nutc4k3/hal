@@ -143,8 +143,6 @@ public:
     std::string get_init_data_identifier() const;
 
 private:
-    bool do_compare(const gate_type& other) const override;
-
     // set of pins that use the internal state or inverted internal state respectively as output
     std::unordered_set<std::string> m_state_pins, m_inverted_state_pins;
 

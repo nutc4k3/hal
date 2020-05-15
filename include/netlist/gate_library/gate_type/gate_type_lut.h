@@ -107,6 +107,4 @@ private:
     std::string m_config_data_category;
     std::string m_config_data_identifier;
     bool m_ascending;
-
-    bool do_compare(const gate_type& other) const override;
 };

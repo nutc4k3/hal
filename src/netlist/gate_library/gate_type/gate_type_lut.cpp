@@ -8,22 +8,6 @@ gate_type_lut::gate_type_lut(const std::string& name) : gate_type(name)
     m_ascending = true;
 }
 
-bool gate_type_lut::do_compare(const gate_type& other) const
-{
-    bool equal              = false;
-    const gate_type_lut* gt = dynamic_cast<const gate_type_lut*>(&other);
-
-    if (gt)
-    {
-        equal = m_config_data_category == gt->get_config_data_category();
-        equal &= m_config_data_identifier == gt->get_config_data_identifier();
-        equal &= m_ascending == gt->is_config_data_ascending_order();
-        equal &= m_output_from_init_string_pins == gt->get_output_from_init_string_pins();
-    }
-
-    return equal;
-}
-
 void gate_type_lut::add_output_from_init_string_pin(const std::string& pin_name)
 {
     if (const auto& it = std::find(m_input_pins.begin(), m_input_pins.end(), pin_name); it != m_input_pins.end())

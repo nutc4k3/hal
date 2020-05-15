@@ -28,17 +28,7 @@ std::ostream& operator<<(std::ostream& os, const gate_type& gt)
 
 bool gate_type::operator==(const gate_type& other) const
 {
-    bool equal = m_id == other.get_id();
-    equal &= m_name == other.get_name();
-    equal &= m_base_type == other.get_base_type();
-    equal &= m_input_pins == other.get_input_pins();
-    equal &= m_input_pin_groups == other.get_input_pin_groups();
-    equal &= m_output_pins == other.get_output_pins();
-    equal &= m_output_pin_groups == other.get_output_pin_groups();
-    equal &= m_functions == other.get_boolean_functions();
-    equal &= this->do_compare(other);
-
-    return equal;
+    return m_id == other.get_id();
 }
 
 bool gate_type::operator!=(const gate_type& other) const
@@ -46,17 +36,11 @@ bool gate_type::operator!=(const gate_type& other) const
     return !(*this == other);
 }
 
-bool gate_type::do_compare(const gate_type& other) const
-{
-    UNUSED(other);
-    return true;
-}
-
 void gate_type::add_input_pin(std::string pin_name)
 {
     if (const auto& it = std::find(m_input_pins.begin(), m_input_pins.end(), pin_name); it != m_input_pins.end())
     {
-        log_warning("gate_type", "input pin with name '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
+        log_warning("gate_type", "input pin '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
         return;
     }
 
@@ -70,7 +54,7 @@ void gate_type::add_input_pins(const std::vector<std::string>& pin_names)
     {
         if (const auto& it = std::find(m_input_pins.begin(), m_input_pins.end(), pin_name); it != m_input_pins.end())
         {
-            log_warning("gate_type", "input pin with name '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
+            log_warning("gate_type", "input pin '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
             continue;
         }
 
@@ -83,22 +67,27 @@ void gate_type::add_input_pin_group(std::string group_name, std::vector<u32> ran
 {
     if (const auto& it = m_input_pin_groups.find(group_name); it != m_input_pin_groups.end())
     {
-        log_warning("gate_type", "input pin group with name '{}' does already exist for gate type '{}', ignoring group", group_name, m_name);
+        log_warning("gate_type", "input pin group '{}' does already exist for gate type '{}', ignoring group", group_name, m_name);
         return;
     }
 
-    m_input_pin_groups.emplace(group_name, range);
     for (const auto& index : range)
     {
-        m_input_pins.push_back(group_name + "(" + std::to_string(index) + ")");
+        if (std::find(m_input_pins.begin(), m_input_pins.end(), group_name + "(" + std::to_string(index) + ")") == m_input_pins.end())
+        {
+            log_warning("gate_type", "input pin '{}' does not yet exist within pin group '{}' for gate type '{}', ignoring group", group_name + "(" + std::to_string(index) + ")", group_name, m_name);
+            return;
+        }
     }
+
+    m_input_pin_groups.emplace(group_name, range);
 }
 
 void gate_type::add_output_pin(std::string pin_name)
 {
     if (const auto& it = std::find(m_output_pins.begin(), m_output_pins.end(), pin_name); it != m_output_pins.end())
     {
-        log_warning("gate_type", "output pin with name '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
+        log_warning("gate_type", "output pin '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
         return;
     }
 
@@ -112,7 +101,7 @@ void gate_type::add_output_pins(const std::vector<std::string>& pin_names)
     {
         if (const auto& it = std::find(m_output_pins.begin(), m_output_pins.end(), pin_name); it != m_output_pins.end())
         {
-            log_warning("gate_type", "output pin with name '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
+            log_warning("gate_type", "output pin '{}' does already exist for gate type '{}', ignoring pin", pin_name, m_name);
             continue;
         }
 
@@ -125,40 +114,30 @@ void gate_type::add_output_pin_group(std::string group_name, std::vector<u32> ra
 {
     if (const auto& it = m_output_pin_groups.find(group_name); it != m_output_pin_groups.end())
     {
-        log_warning("gate_type", "output pin group with name '{}' does already exist for gate type '{}', ignoring group", group_name, m_name);
+        log_warning("gate_type", "output pin group '{}' does already exist for gate type '{}', ignoring group", group_name, m_name);
         return;
     }
 
-    m_output_pin_groups.emplace(group_name, range);
     for (const auto& index : range)
     {
-        m_output_pins.push_back(group_name + "(" + std::to_string(index) + ")");
+        if (std::find(m_output_pins.begin(), m_output_pins.end(), group_name + "(" + std::to_string(index) + ")") == m_output_pins.end())
+        {
+            log_warning("gate_type", "output pin '{}' does not yet exist within pin group '{}' for gate type '{}', ignoring group", group_name + "(" + std::to_string(index) + ")", group_name, m_name);
+            return;
+        }
     }
+
+    m_output_pin_groups.emplace(group_name, range);
 }
 
 void gate_type::add_boolean_function(std::string pin_name, boolean_function bf)
 {
-    if (const auto& it = std::find(m_output_pins.begin(), m_output_pins.end(), pin_name); it == m_output_pins.end())
-    {
-        log_warning("gate_type", "pin '{}' of gate type '{}' is not an output pin, ignoring boolean function", pin_name, m_name);
-        return;
-    }
-
     m_functions.emplace(pin_name, bf);
 }
 
 void gate_type::add_boolean_functions(const std::map<std::string, boolean_function>& functions)
 {
-    for (const auto& function : functions)
-    {
-        if (const auto& it = std::find(m_output_pins.begin(), m_output_pins.end(), function.first); it == m_output_pins.end())
-        {
-            log_warning("gate_type", "pin '{}' of gate type '{}' is not an output pin, ignoring boolean function", function.first, m_name);
-            continue;
-        }
-
-        m_functions.insert(function);
-    }
+    m_functions.insert(functions.begin(), functions.end());
 }
 
 std::string gate_type::get_name() const
