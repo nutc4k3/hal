@@ -198,6 +198,11 @@ std::shared_ptr<gate_library> test_utils::get_testing_gate_library()
     gt->add_output_pins({"O0", "O1", "O2", "O3", "O4", "O5", "O6", "O7"});
     gl->add_gate_type(gt);
 
+    gt = std::make_shared<gate_type>("pin_group_gate_4_to_4");
+    gt->add_input_pin_group("I", {0,1,2,3});
+    gt->add_output_pin_group("O", {0,1,2,3});
+    gl->add_gate_type(gt);
+
     gt = std::make_shared<gate_type>("gnd");
     gt->add_output_pins({"O"});
     gt->add_boolean_function("O", boolean_function::from_string("0"));
@@ -210,6 +215,8 @@ std::shared_ptr<gate_library> test_utils::get_testing_gate_library()
 
     return gl;
 }
+
+
 
 std::shared_ptr<netlist> test_utils::create_example_netlist(const int id)
 {
