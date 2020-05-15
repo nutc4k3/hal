@@ -55,14 +55,14 @@ TEST_F(gate_library_test, check_pin_management)
 {
     TEST_START
         {
-            // Add some input nets
+            // Add some input pins
             gate_type gt("gt_name");
             gt.add_input_pin("IN_0"); // Single
             gt.add_input_pins(std::vector<std::string>({"IN_1", "IN_2"})); // Multiple
             EXPECT_EQ(gt.get_input_pins(), std::vector<std::string>({"IN_0", "IN_1", "IN_2"}));
         }
         {
-            // Add some output nets
+            // Add some output pins
             gate_type gt("gt_name");
             gt.add_output_pin("OUT_0"); // Single
             gt.add_output_pins(std::vector<std::string>({"OUT_1", "OUT_2"})); // Multiple
@@ -80,6 +80,72 @@ TEST_F(gate_library_test, check_pin_management)
             gt.add_output_pin("OUT_PIN");
             gt.add_output_pin("OUT_PIN");
             EXPECT_EQ(gt.get_output_pins().size(), 1);
+        }
+    TEST_END
+}
+
+/**
+ * Testing the usage of gate types with pin groups
+ *
+ * Functions: add_input_pin_group, get_input_pin_groups, add_output_pin_groups, get_output_pin_groups
+ */
+TEST_F(gate_library_test, check_pin_groups)
+{
+    TEST_START
+        {
+            // Add input pin groups
+            gate_type gt("gt_name");
+            gt.add_input_pin_group("pin_group_a", std::vector<u32>({0,1,2,3}));
+            gt.add_input_pin_group("pin_group_b", std::vector<u32>({0,1}));
+
+            EXPECT_EQ(gt.get_input_pin_groups(), (std::map<std::string, std::vector<u32>>({
+                      {"pin_group_a",std::vector<u32>({0,1,2,3})},
+                      {"pin_group_b",std::vector<u32>({0,1})}                             })));
+            EXPECT_EQ(gt.get_input_pins(), std::vector<std::string>({"pin_group_a(0)","pin_group_a(1)","pin_group_a(2)",
+                                                                     "pin_group_a(3)","pin_group_b(0)","pin_group_b(1)"}));
+        }
+        {
+            // Add output pin groups
+            gate_type gt("gt_name");
+            gt.add_output_pin_group("pin_group_a", std::vector<u32>({0,1,2,3}));
+            gt.add_output_pin_group("pin_group_b", std::vector<u32>({0,1}));
+            std::map<std::string, std::vector<u32>> exp_output_pin_groups({
+                                                                                 {"pin_group_a",std::vector<u32>({0,1,2,3})},
+                                                                                 {"pin_group_b",std::vector<u32>({0,1})}
+                                                                         });
+            EXPECT_EQ(gt.get_output_pin_groups(), (std::map<std::string, std::vector<u32>>({
+                      {"pin_group_a",std::vector<u32>({0,1,2,3})},
+                      {"pin_group_b",std::vector<u32>({0,1})}                             })));
+            EXPECT_EQ(gt.get_output_pins(), std::vector<std::string>({"pin_group_a(0)","pin_group_a(1)","pin_group_a(2)",
+                                                                     "pin_group_a(3)","pin_group_b(0)","pin_group_b(1)"}));
+        }
+        // NEGATIVE TESTS
+        {
+            // Try to add an already added pin group
+            gate_type gt("gt_name");
+
+            // Output Pin Group
+            gt.add_output_pin_group("out_pin_group", std::vector<u32>({0,1}));
+            // Should not work:
+            gt.add_output_pin_group("out_pin_group", std::vector<u32>({1,2}));
+            EXPECT_EQ(gt.get_output_pin_groups(), (std::map<std::string, std::vector<u32>>({
+                      {"out_pin_group",std::vector<u32>({0,1})}                             })));
+            EXPECT_EQ(gt.get_output_pins(), std::vector<std::string>({"out_pin_group(0)","out_pin_group(1)"}));
+
+            // Input Pin Group
+            gt.add_input_pin_group("in_pin_group", std::vector<u32>({0,1}));
+            // Should not work:
+            gt.add_input_pin_group("in_pin_group", std::vector<u32>({1,2}));
+            EXPECT_EQ(gt.get_input_pin_groups(), (std::map<std::string, std::vector<u32>>({
+                     {"in_pin_group",std::vector<u32>({0,1})}                             })));
+            EXPECT_EQ(gt.get_input_pins(), std::vector<std::string>({"in_pin_group(0)","in_pin_group(1)"}));
+        }
+        { // ISSUE: Pin is added twice (muahahaha) >:)
+            // Add a pin group, that contains a pin that is already registered
+            gate_type gt("gt_name");
+            gt.add_output_pin("out_pin(0)");
+            gt.add_output_pin_group("out_pin", std::vector<u32>({0})); // <- shouldn't work
+            EXPECT_EQ(gt.get_output_pins(), std::vector<std::string>({"out_pin(0)"}));
         }
     TEST_END
 }
