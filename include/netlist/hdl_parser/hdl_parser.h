@@ -160,17 +160,31 @@ public:
                 // instance of gate type
                 else if (const auto gate_it = m_tmp_gate_types.find(inst.get_type()); gate_it != m_tmp_gate_types.end())
                 {
+                    // cache pin types
+                    std::vector<T> pins;
                     std::map<T, std::vector<u32>> pin_groups;
+
                     if constexpr (std::is_same<T, std::string>::value)
                     {
-                        pin_groups = gate_it->second->get_input_pin_groups();
-                        for (const auto& pin_group : gate_it->second->get_output_pin_groups())
-                        {
-                            pin_groups.emplace(pin_group);
-                        }
+                        pins                       = gate_it->second->get_input_pins();
+                        std::vector<T> output_pins = gate_it->second->get_output_pins();
+                        pins.insert(pins.end(), output_pins.begin(), output_pins.end());
+
+                        pin_groups                                      = gate_it->second->get_input_pin_groups();
+                        std::map<T, std::vector<u32>> output_pin_groups = gate_it->second->get_output_pin_groups();
+                        pin_groups.insert(output_pin_groups.begin(), output_pin_groups.end());
                     }
                     else
                     {
+                        for (const auto& pin : gate_it->second->get_input_pins())
+                        {
+                            pins.push_back(core_strings::from_std_string<T>(pin));
+                        }
+                        for (const auto& pin : gate_it->second->get_output_pins())
+                        {
+                            pins.push_back(core_strings::from_std_string<T>(pin));
+                        }
+
                         for (const auto& pin_group : gate_it->second->get_input_pin_groups())
                         {
                             pin_groups.emplace(core_strings::from_std_string<T>(pin_group.first), pin_group.second);
@@ -183,21 +197,21 @@ public:
 
                     for (auto& [port, assignments] : port_assignments)
                     {
-                        if (const auto pin_it = pin_groups.find(port.get_name()); pin_it != pin_groups.end())
+                        if (!port.is_ranges_known())
                         {
-                            if (!pin_it->second.empty())
+                            if (const auto pin_group_it = pin_groups.find(port.get_name()); pin_group_it != pin_groups.end())
                             {
-                                port.set_ranges({pin_it->second});
+                                port.set_ranges({pin_group_it->second});
                             }
-                            else
+                            else if (const auto pin_it = std::find(pins.begin(), pins.end(), port.get_name()); pin_it != pins.end())
                             {
                                 port.set_ranges({});
                             }
-                        }
-                        else
-                        {
-                            log_error("hdl_parser", "pin '{}' is no valid pin for gate '{}' of type '{}' in line {}", port.get_name(), inst_name, gate_it->first, port.get_line_number());
-                            return nullptr;
+                            else
+                            {
+                                log_error("hdl_parser", "pin '{}' is no valid pin for gate '{}' of type '{}' in line {}", port.get_name(), inst_name, gate_it->first, port.get_line_number());
+                                return nullptr;
+                            }
                         }
 
                         const i32 left_size = port.get_size();
