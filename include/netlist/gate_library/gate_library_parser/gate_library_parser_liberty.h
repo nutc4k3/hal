@@ -144,19 +144,21 @@ private:
         latch_group latch;
         lut_group lut;
         std::vector<pin_group> pins;
+        std::set<std::string> pin_names;
         std::map<std::string, std::string> special_functions;
     };
 
     token_stream<std::string> m_token_stream;
     std::map<std::string, type_group> m_bus_types;
+    std::set<std::string> m_cell_names;
 
     bool tokenize();
     bool parse_tokens();
 
     bool parse_cell(token_stream<std::string>& library_stream);
     bool parse_type(token_stream<std::string>& str);
-    std::optional<pin_group> parse_pin(token_stream<std::string>& str, pin_direction direction = pin_direction::UNKNOWN, const std::string& external_pin_name = "");
-    std::optional<bus_group> parse_bus(token_stream<std::string>& str);
+    std::optional<pin_group> parse_pin(token_stream<std::string>& str, cell_group& cell, pin_direction direction = pin_direction::UNKNOWN, const std::string& external_pin_name = "");
+    std::optional<bus_group> parse_bus(token_stream<std::string>& str, cell_group& cell);
     std::optional<ff_group> parse_ff(token_stream<std::string>& str);
     std::optional<latch_group> parse_latch(token_stream<std::string>& str);
     std::optional<lut_group> parse_lut(token_stream<std::string>& str);

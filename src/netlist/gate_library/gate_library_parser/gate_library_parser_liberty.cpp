@@ -234,12 +234,20 @@ bool gate_library_parser_liberty::parse_cell(token_stream<std::string>& str)
     auto cell_str = str.extract_until("}", token_stream<std::string>::END_OF_STREAM, true, true);
     str.consume("}", true);
 
+    if (const auto cell_it = m_cell_names.find(cell.name); cell_it != m_cell_names.end())
+    {
+        log_error("liberty_parser", "a cell with the name '{}' does already exist", cell.name);
+        return false;
+    }
+
+    m_cell_names.insert(cell.name);
+
     while (cell_str.remaining() > 0)
     {
         auto next_token = cell_str.consume();
         if (next_token == "pin")
         {
-            auto pin = parse_pin(cell_str);
+            auto pin = parse_pin(cell_str, cell);
             if (!pin.has_value())
             {
                 return false;
@@ -248,7 +256,7 @@ bool gate_library_parser_liberty::parse_cell(token_stream<std::string>& str)
         }
         else if (next_token == "bus")
         {
-            auto bus = parse_bus(cell_str);
+            auto bus = parse_bus(cell_str, cell);
             if (!bus.has_value())
             {
                 return false;
@@ -298,7 +306,8 @@ bool gate_library_parser_liberty::parse_cell(token_stream<std::string>& str)
     return true;
 }
 
-std::optional<gate_library_parser_liberty::pin_group> gate_library_parser_liberty::parse_pin(token_stream<std::string>& str, pin_direction direction, const std::string& external_pin_name)
+std::optional<gate_library_parser_liberty::pin_group>
+    gate_library_parser_liberty::parse_pin(token_stream<std::string>& str, cell_group& cell, pin_direction direction, const std::string& external_pin_name)
 {
     pin_group pin;
 
@@ -331,6 +340,14 @@ std::optional<gate_library_parser_liberty::pin_group> gate_library_parser_libert
                 for (int i = start; i != (end + dir); i += dir)
                 {
                     auto new_name = name + "(" + std::to_string(i) + ")";
+
+                    if (const auto pin_it = cell.pin_names.find(new_name); pin_it != cell.pin_names.end())
+                    {
+                        log_error("liberty_parser", "a pin with name '{}' does already exist for cell '{}'", new_name, cell.name);
+                        return std::nullopt;
+                    }
+
+                    cell.pin_names.insert(new_name);
                     pin.pin_names.push_back(new_name);
                 }
             }
@@ -338,6 +355,14 @@ std::optional<gate_library_parser_liberty::pin_group> gate_library_parser_libert
             {
                 u32 index     = std::stoul(pin_names_str.consume().string);
                 auto new_name = name + "(" + std::to_string(index) + ")";
+
+                if (const auto pin_it = cell.pin_names.find(new_name); pin_it != cell.pin_names.end())
+                {
+                    log_error("liberty_parser", "a pin with name '{}' does already exist for cell '{}'", new_name, cell.name);
+                    return std::nullopt;
+                }
+
+                cell.pin_names.insert(new_name);
                 pin.pin_names.push_back(new_name);
             }
 
@@ -345,6 +370,13 @@ std::optional<gate_library_parser_liberty::pin_group> gate_library_parser_libert
         }
         else
         {
+            if (const auto pin_it = cell.pin_names.find(name); pin_it != cell.pin_names.end())
+            {
+                log_error("liberty_parser", "a pin with name '{}' does already exist for cell '{}'", name, cell.name);
+                return std::nullopt;
+            }
+
+            cell.pin_names.insert(name);
             pin.pin_names.push_back(name);
         }
 
@@ -401,7 +433,7 @@ std::optional<gate_library_parser_liberty::pin_group> gate_library_parser_libert
     return pin;
 }
 
-std::optional<gate_library_parser_liberty::bus_group> gate_library_parser_liberty::parse_bus(token_stream<std::string>& str)
+std::optional<gate_library_parser_liberty::bus_group> gate_library_parser_liberty::parse_bus(token_stream<std::string>& str, cell_group& cell)
 {
     bus_group bus;
     std::vector<u32> range;
@@ -457,11 +489,12 @@ std::optional<gate_library_parser_liberty::bus_group> gate_library_parser_libert
         }
         else if (next_token == "pin")
         {
-            auto pin = parse_pin(bus_str, bus.direction, bus.name);
+            auto pin = parse_pin(bus_str, cell, bus.direction, bus.name);
             if (!pin.has_value())
             {
                 return std::nullopt;
             }
+
             bus.pins.push_back(pin.value());
         }
     } while (bus_str.remaining() > 0);
