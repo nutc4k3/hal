@@ -45,7 +45,6 @@ void gate_type::add_input_pin(std::string pin_name)
     }
 
     m_input_pins.push_back(pin_name);
-    m_input_pin_groups.emplace(pin_name, std::vector<u32>(0));
 }
 
 void gate_type::add_input_pins(const std::vector<std::string>& pin_names)
@@ -59,7 +58,6 @@ void gate_type::add_input_pins(const std::vector<std::string>& pin_names)
         }
 
         m_input_pins.push_back(pin_name);
-        m_input_pin_groups.emplace(pin_name, std::vector<u32>(0));
     }
 }
 
@@ -92,7 +90,6 @@ void gate_type::add_output_pin(std::string pin_name)
     }
 
     m_output_pins.push_back(pin_name);
-    m_output_pin_groups.emplace(pin_name, std::vector<u32>(0));
 }
 
 void gate_type::add_output_pins(const std::vector<std::string>& pin_names)
@@ -106,7 +103,6 @@ void gate_type::add_output_pins(const std::vector<std::string>& pin_names)
         }
 
         m_output_pins.push_back(pin_name);
-        m_output_pin_groups.emplace(pin_name, std::vector<u32>(0));
     }
 }
 

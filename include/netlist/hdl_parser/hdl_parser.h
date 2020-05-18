@@ -212,19 +212,19 @@ public:
                                 log_error("hdl_parser", "pin '{}' is no valid pin for gate '{}' of type '{}' in line {}", port.get_name(), inst_name, gate_it->first, port.get_line_number());
                                 return nullptr;
                             }
-                        }
 
-                        const i32 left_size = port.get_size();
-                        i32 right_size      = 0;
-                        for (const auto& s : assignments)
-                        {
-                            right_size += s.get_size();
-                        }
+                            const i32 left_size = port.get_size();
+                            i32 right_size      = 0;
+                            for (const auto& s : assignments)
+                            {
+                                right_size += s.get_size();
+                            }
 
-                        if (left_size != right_size)
-                        {
-                            log_error("hdl_parser", "port assignment width mismatch: port has width {} and assigned signal has width {} in line {}", left_size, right_size, port.get_line_number());
-                            return nullptr;
+                            if (left_size != right_size)
+                            {
+                                log_error("hdl_parser", "port assignment width mismatch: port has width {} and assigned signal has width {} in line {}", left_size, right_size, port.get_line_number());
+                                return nullptr;
+                            }
                         }
                     }
                 }
