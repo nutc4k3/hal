@@ -534,11 +534,11 @@ std::optional<gate_library_parser_liberty::ff_group> gate_library_parser_liberty
             {
                 if (next_token == "clear_preset_var1")
                 {
-                    ff.special_behavior_var1 = gate_type_sequential::set_reset_behavior(pos);
+                    ff.special_behavior_var1 = gate_type_sequential::set_reset_behavior(pos + 1);
                 }
                 else
                 {
-                    ff.special_behavior_var2 = gate_type_sequential::set_reset_behavior(pos);
+                    ff.special_behavior_var2 = gate_type_sequential::set_reset_behavior(pos + 1);
                 }
             }
             else
@@ -616,11 +616,11 @@ std::optional<gate_library_parser_liberty::latch_group> gate_library_parser_libe
             {
                 if (next_token == "clear_preset_var1")
                 {
-                    latch.special_behavior_var1 = gate_type_sequential::set_reset_behavior(pos);
+                    latch.special_behavior_var1 = gate_type_sequential::set_reset_behavior(pos + 1);
                 }
                 else
                 {
-                    latch.special_behavior_var2 = gate_type_sequential::set_reset_behavior(pos);
+                    latch.special_behavior_var2 = gate_type_sequential::set_reset_behavior(pos + 1);
                 }
             }
             else

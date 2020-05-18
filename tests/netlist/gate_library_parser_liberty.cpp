@@ -266,10 +266,10 @@ TEST_F(gate_library_parser_liberty_test, check_flip_flop)
             EXPECT_EQ(gt_ff->get_boolean_functions().at("next_state"), boolean_function::from_string("D", std::vector<std::string>({"D"})));
             ASSERT_TRUE(gt_ff->get_boolean_functions().find("clock") != gt_ff->get_boolean_functions().end());
             EXPECT_EQ(gt_ff->get_boolean_functions().at("clock"), boolean_function::from_string("CLK", std::vector<std::string>({"CLK"})));
-            ASSERT_TRUE(gt_ff->get_boolean_functions().find("set") != gt_ff->get_boolean_functions().end());
-            EXPECT_EQ(gt_ff->get_boolean_functions().at("set"), boolean_function::from_string("S", std::vector<std::string>({"S"})));
-            ASSERT_TRUE(gt_ff->get_boolean_functions().find("reset") != gt_ff->get_boolean_functions().end());
-            EXPECT_EQ(gt_ff->get_boolean_functions().at("reset"), boolean_function::from_string("R", std::vector<std::string>({"R"})));
+            ASSERT_TRUE(gt_ff->get_boolean_functions().find("preset") != gt_ff->get_boolean_functions().end());
+            EXPECT_EQ(gt_ff->get_boolean_functions().at("preset"), boolean_function::from_string("S", std::vector<std::string>({"S"})));
+            ASSERT_TRUE(gt_ff->get_boolean_functions().find("clear") != gt_ff->get_boolean_functions().end());
+            EXPECT_EQ(gt_ff->get_boolean_functions().at("clear"), boolean_function::from_string("R", std::vector<std::string>({"R"})));
             // -- Check the output pins
             EXPECT_EQ(gt_ff->get_state_output_pins(), std::unordered_set<std::string>({"Q"}));
             EXPECT_EQ(gt_ff->get_inverted_state_output_pins(), std::unordered_set<std::string>({"QN"}));
@@ -347,12 +347,12 @@ TEST_F(gate_library_parser_liberty_test, check_latch)
             // -- Check the boolean functions of the latch group that are parsed (currently only enable, data_in, preset(set) and clear(reset) are parsed)
             ASSERT_TRUE(gt_latch->get_boolean_functions().find("enable") != gt_latch->get_boolean_functions().end());
             EXPECT_EQ(gt_latch->get_boolean_functions().at("enable"), boolean_function::from_string("G", std::vector<std::string>({"G"})));
-            ASSERT_TRUE(gt_latch->get_boolean_functions().find("data_in") != gt_latch->get_boolean_functions().end());
-            EXPECT_EQ(gt_latch->get_boolean_functions().at("data_in"), boolean_function::from_string("D", std::vector<std::string>({"D"})));
-            ASSERT_TRUE(gt_latch->get_boolean_functions().find("set") != gt_latch->get_boolean_functions().end());
-            EXPECT_EQ(gt_latch->get_boolean_functions().at("set"), boolean_function::from_string("S", std::vector<std::string>({"S"})));
-            ASSERT_TRUE(gt_latch->get_boolean_functions().find("reset") != gt_latch->get_boolean_functions().end());
-            EXPECT_EQ(gt_latch->get_boolean_functions().at("reset"), boolean_function::from_string("R", std::vector<std::string>({"R"})));
+            ASSERT_TRUE(gt_latch->get_boolean_functions().find("data") != gt_latch->get_boolean_functions().end());
+            EXPECT_EQ(gt_latch->get_boolean_functions().at("data"), boolean_function::from_string("D", std::vector<std::string>({"D"})));
+            ASSERT_TRUE(gt_latch->get_boolean_functions().find("preset") != gt_latch->get_boolean_functions().end());
+            EXPECT_EQ(gt_latch->get_boolean_functions().at("preset"), boolean_function::from_string("S", std::vector<std::string>({"S"})));
+            ASSERT_TRUE(gt_latch->get_boolean_functions().find("clear") != gt_latch->get_boolean_functions().end());
+            EXPECT_EQ(gt_latch->get_boolean_functions().at("clear"), boolean_function::from_string("R", std::vector<std::string>({"R"})));
             // -- Check the output pins
             EXPECT_EQ(gt_latch->get_state_output_pins(), std::unordered_set<std::string>({"Q"}));
             EXPECT_EQ(gt_latch->get_inverted_state_output_pins(), std::unordered_set<std::string>({"QN"}));
