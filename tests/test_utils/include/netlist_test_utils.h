@@ -10,6 +10,7 @@
 #include "netlist/net.h"
 #include "netlist/netlist.h"
 #include "test_def.h"
+#include "netlist/boolean_function.h"
 
 #include <core/utils.h>
 #include <fstream>
@@ -82,13 +83,24 @@ namespace test_utils
     bool is_empty(const endpoint& ep);
 
     /**
+     * Minimizes a truth table of a boolean function such that variables that do not matter are eliminated.
+     * E.g: {0,0,1,1,1,1,0,0} becomes {0,1,1,0} (the first variable is eliminated)
+     *
+     * This function is used to compare optimized functions with non-optimized ones
+     *
+     * @param tt - the truth table to minimize
+     * @returns the minimized truth table
+     */
+    std::vector<boolean_function::value> minimize_truth_table(const std::vector<boolean_function::value> tt);
+
+    /**
      * Get a gate type by its name
      *
      * @param name - the name of the gate_type
      * @param gate_library_name - the name of the gate library, the gate_type can be found. If empty, the example gate library (g_lib_name) is taken.
      * @return the gate_type pointer if found. If no gate type matches, return nullptr
      */
-    std::shared_ptr<const gate_type> get_gate_type_by_name(std::string name, std::string gate_library_name = "");
+    std::shared_ptr<const gate_type> get_gate_type_by_name(std::string name, std::shared_ptr<gate_library> gate_library = nullptr);
 
     /**
      * Given a vector of endpoints. Returns the first endpoint that has a certain pin type
@@ -187,15 +199,15 @@ namespace test_utils
     *      example_netlist
     *
     *
-    *      GND (1) =-= INV (3) =--=             .------= INV (4) =
-    *                                 AND2 (0) =-
-    *      VCC (2) =--------------=             '------=
-    *                                                     AND2 (5) =
-    *                                                  =
+    *      gnd (1) =--= gate_1_to_1 (3) =--=                  .------= gate_1_to_1 (4) =
+    *                                        gate_2_to_1 (0) =+
+    *      vcc (2) =-----------------------=                  '------=
+    *                                                                  gate_2_to_1 (5) =
+    *                                                                =
     *
-    *     =                       =           =----------=           =
-    *       BUF (6)              ... OR2 (7)             ... OR2 (8)
-    *     =                       =           =          =           =
+    *     =                       =                 =----------=
+    *       gate_2_to_0 (6)         gate_2_to_1 (7)            ...  gate_2_to_1 (8) =
+    *     =                       =                 =          =
     */
     /**
      * Creates the netlist shown in the diagram above. Sets a concrete id if passed.
@@ -208,18 +220,18 @@ namespace test_utils
     /*
      *      example netlist II
      *
-     *    =             .-------=          =
-     *    =             +-------=          =
-     *    = AND4 (0) =--+-------= AND4 (1) =
-     *    =             |    .--=          =
-     *                  |    |
-     *    =             |    |
-     *    =             |    |
-     *    = AND4 (2) =--~----'
-     *    =             '-------=
-     *                          =
-     *                          =  AND4 (3) =
-     *                          =
+     *    =                    .-------=                 =
+     *    =                    +-------=                 =
+     *    = gate_4_to_1 (0) =--+-------= gate_4_to_1 (1) =
+     *    =                    |    .--=                 =
+     *                         |    |
+     *    =                    |    |
+     *    =                    |    |
+     *    = gate_4_to_1 (2) =--~----'
+     *    =                    '-------=
+     *                                 =
+     *                                 =  gate_4_to_1 (3) =
+     *                                 =
      */
     /**
      * Creates the netlist shown in the diagram above. Sets a concrete id if passed.
@@ -391,6 +403,14 @@ namespace test_utils
      * @return the std::function object of the filter function
      */
     std::function<bool(const endpoint&)> endpoint_type_filter(const std::string& type);
+
+    /**
+     * Filter returns true, if the type of the gate, the endpoint is connected to, has the name 'name'
+     *
+     * @param type - the name of the gates the filter is searching for
+     * @return the std::function object of the filter function
+     */
+    std::function<bool(const endpoint&)> endpoint_gate_name_filter(const std::string& name);
 
     /**
      * Filter returns true, for all connected endpoint (of adjacent gates) of type 'pin'

@@ -3,6 +3,8 @@
 #include "gtest/gtest.h"
 #include <iostream>
 #include <netlist/boolean_function.h>
+#include <math.h>
+
 
 using namespace test_utils;
 
@@ -118,32 +120,34 @@ protected:
  *
  * Functions: constructor, evaluate, get_truth_table, AND, XOR, OR
  */
-TEST_F(boolean_function_test, check_main_example){TEST_START{// Constuctor with variables
-                                                             boolean_function a("A");
-boolean_function b("B");
-boolean_function c("C");
-// Constructor with constant
-boolean_function _1(ONE);
+TEST_F(boolean_function_test, check_main_example){
+    TEST_START
+        {
+            // Constuctor with variables
+            boolean_function a("A");
+            boolean_function b("B");
+            boolean_function c("C");
+            // Constructor with constant
+            boolean_function _1(ONE);
 
-// Combining them
-boolean_function r = ((a & b) | c) ^ _1;
+            // Combining them
+            boolean_function r = ((a & b) | c) ^ _1;
 
-EXPECT_EQ(r(create_input_map("ABC", "000")), ONE);
-EXPECT_EQ(r(create_input_map("ABC", "001")), ZERO);
-EXPECT_EQ(r(create_input_map("ABC", "010")), ONE);
-EXPECT_EQ(r(create_input_map("ABC", "011")), ZERO);
+            EXPECT_EQ(r(create_input_map("ABC", "000")), ONE);
+            EXPECT_EQ(r(create_input_map("ABC", "001")), ZERO);
+            EXPECT_EQ(r(create_input_map("ABC", "010")), ONE);
+            EXPECT_EQ(r(create_input_map("ABC", "011")), ZERO);
 
-EXPECT_EQ(r(create_input_map("ABC", "100")), ONE);
-EXPECT_EQ(r(create_input_map("ABC", "101")), ZERO);
-EXPECT_EQ(r(create_input_map("ABC", "110")), ZERO);
-EXPECT_EQ(r(create_input_map("ABC", "111")), ZERO);
+            EXPECT_EQ(r(create_input_map("ABC", "100")), ONE);
+            EXPECT_EQ(r(create_input_map("ABC", "101")), ZERO);
+            EXPECT_EQ(r(create_input_map("ABC", "110")), ZERO);
+            EXPECT_EQ(r(create_input_map("ABC", "111")), ZERO);
 
-std::vector<boolean_function::value> truth_table = r.get_truth_table(std::vector<std::string>({"C", "B", "A"}));
+            std::vector<boolean_function::value> truth_table = r.get_truth_table(std::vector<std::string>({"C", "B", "A"}));
 
-EXPECT_EQ(truth_table, std::vector<boolean_function::value>({ONE, ZERO, ONE, ZERO, ONE, ZERO, ZERO, ZERO}));
-}
-
-TEST_END
+            EXPECT_EQ(truth_table, std::vector<boolean_function::value>({ONE, ZERO, ONE, ZERO, ONE, ZERO, ZERO, ZERO}));
+        }
+    TEST_END
 }
 
 /**
@@ -200,16 +204,19 @@ TEST_F(boolean_function_test, check_is_constant)
  *
  * Functions: is_empty
  */
-TEST_F(boolean_function_test, check_is_empty){TEST_START{// The boolean function is not empty
-                                                         boolean_function not_empty("A");
-EXPECT_FALSE(not_empty.is_empty());
-}
-{
-    // The boolean function is empty
-    boolean_function empty;
-    EXPECT_TRUE(empty.is_empty());
-}
-TEST_END
+TEST_F(boolean_function_test, check_is_empty){
+    TEST_START
+        {
+            // The boolean function is not empty
+            boolean_function not_empty("A");
+            EXPECT_FALSE(not_empty.is_empty());
+        }
+        {
+            // The boolean function is empty
+            boolean_function empty;
+            EXPECT_TRUE(empty.is_empty());
+        }
+    TEST_END
 }
 
 /**
@@ -217,14 +224,17 @@ TEST_END
  *
  * Functions: get_variables
  */
-TEST_F(boolean_function_test, check_get_variables){TEST_START{// Get variables
-                                                              boolean_function a("A");
-boolean_function b("B");
-boolean_function c("C");
-boolean_function a_2("A");
-EXPECT_EQ((a | b | c | a_2).get_variables(), std::set<std::string>({"A", "B", "C"}));
-}
-TEST_END
+TEST_F(boolean_function_test, check_get_variables){
+    TEST_START
+        {
+            // Get variables
+            boolean_function a("A");
+            boolean_function b("B");
+            boolean_function c("C");
+            boolean_function a_2("A");
+            EXPECT_EQ((a | b | c | a_2).get_variables(), std::set<std::string>({"A", "B", "C"}));
+        }
+    TEST_END
 }
 
 /**
@@ -232,55 +242,57 @@ TEST_END
  *
  * Functions: operator==, operator!=
  */
-TEST_F(boolean_function_test, check_compare_operator){TEST_START
-                                                      // Tests for ==
-                                                      {// Compare the same object
-                                                       boolean_function a("A");
-EXPECT_TRUE((a == a));
-}
-{
-    // The boolean functions are equivalent in syntax
-    boolean_function a("A");
-    boolean_function b("B");
-    EXPECT_TRUE(((a | b) == (a | b)));
-}
-{
-    // The boolean functions are equivalent in semantic (but not in syntax)
-    boolean_function a("A");
-    boolean_function b("B");
-    // EXPECT_TRUE(((a|b|b) == (a|b)));
-}
-/*{ ISSUE: Fails, because m_op is not set in boolean_function()
+TEST_F(boolean_function_test, check_compare_operator){
+    TEST_START
+        // Tests for ==
+        {
+            // Compare the same object
+            boolean_function a("A");
+            EXPECT_TRUE((a == a));
+        }
+        {
+            // The boolean functions are equivalent in syntax
+            boolean_function a("A");
+            boolean_function b("B");
+            EXPECT_TRUE(((a | b) == (a | b)));
+        }
+        {
+            // The boolean functions are equivalent in semantic (but not in syntax)
+            boolean_function a("A");
+            boolean_function b("B");
+            // EXPECT_TRUE(((a|b|b) == (a|b)));
+        }
+        /*{ ISSUE: Fails, because m_op is not set in boolean_function()
             // Compare two empty expressions
             boolean_function a = boolean_function();
 
             EXPECT_TRUE(a == boolean_function());
         }*/
 // Tests for !=
-{
-    // The boolean function are equivalent in semantic, but do not share the same variable
-    boolean_function a("A");
-    boolean_function b("B");
-    EXPECT_TRUE((a != b));
-}
-{
-    // Compare boolean functions of different types (constant, variable, expression)
-    boolean_function a("A");
-    boolean_function b("B");
-    boolean_function _1(ONE);
-    EXPECT_TRUE((a != (a | (b & _1))));     // variable - expression
-    EXPECT_TRUE((a != _1));                 // variable - constant
-    EXPECT_TRUE(((a | (b & _1)) != _1));    // expression - constant
-}
-{
-    // Compare semantically different expressions
-    boolean_function a("A");
-    boolean_function b("B");
-    EXPECT_TRUE(((a & b) != (a | b)));
-    EXPECT_TRUE(((a ^ b) != (a & b)));
-    EXPECT_TRUE(((a ^ b) != ((!a) & b)));
-}
-TEST_END
+        {
+            // The boolean function are equivalent in semantic, but do not share the same variable
+            boolean_function a("A");
+            boolean_function b("B");
+            EXPECT_TRUE((a != b));
+        }
+        {
+            // Compare boolean functions of different types (constant, variable, expression)
+            boolean_function a("A");
+            boolean_function b("B");
+            boolean_function _1(ONE);
+            EXPECT_TRUE((a != (a | (b & _1))));     // variable - expression
+            EXPECT_TRUE((a != _1));                 // variable - constant
+            EXPECT_TRUE(((a | (b & _1)) != _1));    // expression - constant
+        }
+        {
+            // Compare semantically different expressions
+            boolean_function a("A");
+            boolean_function b("B");
+            EXPECT_TRUE(((a & b) != (a | b)));
+            EXPECT_TRUE(((a ^ b) != (a & b)));
+            EXPECT_TRUE(((a ^ b) != ((!a) & b)));
+        }
+    TEST_END
 }
 
 /**
@@ -299,12 +311,12 @@ TEST_F(boolean_function_test, check_optimize)
     {
         // Optimize some boolean functions and compare their truth_table
         boolean_function bf = (!(a ^ b & c) | (b | c & _1)) ^ ((a & b) | (a | b | c));
-        EXPECT_EQ(bf.get_truth_table(std::vector<std::string>({"C", "B", "A"})), bf.optimize().get_truth_table(std::vector<std::string>({"C", "B", "A"})));
+        EXPECT_EQ(minimize_truth_table(bf.get_truth_table(std::vector<std::string>({"C", "B", "A"}))), bf.optimize().get_truth_table(std::vector<std::string>({"C", "B", "A"})));
     }
     {
         // Optimize some boolean functions and compare their truth_table
         boolean_function bf = (a | b | c);
-        EXPECT_EQ(bf.get_truth_table(std::vector<std::string>({"C", "B", "A"})), bf.optimize().get_truth_table(std::vector<std::string>({"C", "B", "A"})));
+        EXPECT_EQ(minimize_truth_table(bf.get_truth_table(std::vector<std::string>({"C", "B", "A"}))), bf.optimize().get_truth_table(std::vector<std::string>({"C", "B", "A"})));
     }
     /*{ // ISSUE: Fails (resulting truth table is (X,X,X,X))
             // Optimize a boolean function that is constant one
@@ -314,7 +326,7 @@ TEST_F(boolean_function_test, check_optimize)
     {
         // Optimize a boolean function that is constant zero
         boolean_function bf = (a & !a) | (b & !b);
-        EXPECT_EQ(bf.get_truth_table(std::vector<std::string>({"A", "B"})), bf.optimize().get_truth_table(std::vector<std::string>({"A", "B"})));    // <- fails
+        EXPECT_EQ(minimize_truth_table(bf.get_truth_table(std::vector<std::string>({"A", "B"}))), bf.optimize().get_truth_table(std::vector<std::string>({"A", "B"})));    // <- fails
     }
     TEST_END
 }
@@ -346,7 +358,7 @@ TEST_F(boolean_function_test, check_from_string)
     {
         // Declare custom variable
         auto bf = boolean_function::from_string(f_str, {"A B C D"});
-        EXPECT_EQ(bf.get_variables(), std::set<std::string>({"A B C D"}));
+        EXPECT_EQ(bf.get_variables(), std::set<std::string>({"A B C D", "D"}));
     }
     {
         // Declare custom variable
@@ -367,52 +379,54 @@ TEST_F(boolean_function_test, check_from_string)
  *
  * Functions: from_string, to_dnf, optimize
  */
-TEST_F(boolean_function_test, check_test_vectors){TEST_START{
-    /* clang-format off */
-        std::vector<std::string> test_cases = {
-            "0",
-            "1",
-            "a",
-            "a ^ a",
-            "a | a",
-            "a & a",
-            "a ^ b",
-            "a | b",
-            "a & b",
-            "!(((!8 & !(!(!19 | !20) & 26)) | (8 & !((!26 & !(!19 | !20)) | (26 & !(!19 | 20))))) & !(((((((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & !((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & !27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (!((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19))))) & !26 & !((8 & (!20 | 19)) | (!8 & !(!20 | 19)))) | (!((((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & !((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & !27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (!((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19))))) & 26 & !((8 & (!20 | 19)) | (!8 & !(!20 | 19)))) | (!((((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & !((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & !27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (!((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19))))) & !26 & ((8 & (!20 | 19)) | (!8 & !(!20 | 19)))) | (((((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & !((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & !27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (!((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19))))) & 26 & ((8 & (!20 | 19)) | (!8 & !(!20 | 19))))) & !19))",
-        };
-/* clang-format on */
+TEST_F(boolean_function_test, check_test_vectors){
+    TEST_START
+        {
+            /* clang-format off */
+            std::vector<std::string> test_cases = {
+                    "0",
+                    "1",
+                    "a",
+                    "a ^ a",
+                    "a | a",
+                    "a & a",
+                    "a ^ b",
+                    "a | b",
+                    "a & b",
+                    "!(((!8 & !(!(!19 | !20) & 26)) | (8 & !((!26 & !(!19 | !20)) | (26 & !(!19 | 20))))) & !(((((((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & !((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & !27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (!((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19))))) & !26 & !((8 & (!20 | 19)) | (!8 & !(!20 | 19)))) | (!((((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & !((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & !27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (!((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19))))) & 26 & !((8 & (!20 | 19)) | (!8 & !(!20 | 19)))) | (!((((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & !((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & !27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (!((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19))))) & !26 & ((8 & (!20 | 19)) | (!8 & !(!20 | 19)))) | (((((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & !((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & !27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (!((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19)))) | (((!(!20 | 19) & 28 & !((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & !28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | ((!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19)))) | (!(!20 | 19) & 28 & ((10 & (!20 | 19)) | (!10 & !(!20 | 19))))) & 27 & ((9 & (!20 | 19)) | (!9 & !(!20 | 19))))) & 26 & ((8 & (!20 | 19)) | (!8 & !(!20 | 19))))) & !19))",
+            };
+            /* clang-format on */
 
-for (const auto& f_str : test_cases)
-{
-    auto f        = boolean_function::from_string(f_str);
-    auto tmp_vars = f.get_variables();
-    std::vector<std::string> ordered_variables(tmp_vars.begin(), tmp_vars.end());
-    auto original_truth_table  = f.get_truth_table(ordered_variables);
-    auto dnf                   = f.to_dnf();
-    auto dnf_truth_table       = dnf.get_truth_table(ordered_variables);
-    auto optimized             = f.optimize();
-    auto optimized_truth_table = optimized.get_truth_table(ordered_variables);
+            for (const auto& f_str : test_cases)
+            {
+                auto f        = boolean_function::from_string(f_str);
+                auto tmp_vars = f.get_variables();
+                std::vector<std::string> ordered_variables(tmp_vars.begin(), tmp_vars.end());
+                auto original_truth_table  = f.get_truth_table(ordered_variables);
+                auto dnf                   = f.to_dnf();
+                auto dnf_truth_table       = dnf.get_truth_table(ordered_variables);
+                auto optimized             = f.optimize();
+                auto optimized_truth_table = optimized.get_truth_table(ordered_variables);
 
-    if (original_truth_table != dnf_truth_table)
-    {
-        EXPECT_TRUE(false) << "ERROR: DNF function does not match original function" << std::endl
-                           << "  original function:  " << f << std::endl
-                           << "  DNF of function:    " << dnf << std::endl
-                           << "  optimized function: " << optimized << std::endl;
-    }
+                if (minimize_truth_table(original_truth_table) != dnf_truth_table)
+                {
+                    EXPECT_TRUE(false) << "ERROR: DNF function does not match original function" << std::endl
+                                       << "  original function:  " << f << std::endl
+                                       << "  DNF of function:    " << dnf << std::endl
+                                       << "  optimized function: " << optimized << std::endl;
+                }
 
-    if (original_truth_table != optimized_truth_table)
-    {
-        EXPECT_TRUE(false) << "ERROR: optimized function does not match original function" << std::endl
-                           << "  original function:  " << f << std::endl
-                           << "  DNF of function:    " << dnf << std::endl
-                           << "  optimized function: " << optimized << std::endl;
-    }
-}
-}
+                if (minimize_truth_table(original_truth_table) != optimized_truth_table)
+                {
+                    EXPECT_TRUE(false) << "ERROR: optimized function does not match original function" << std::endl
+                                       << "  original function:  " << f << std::endl
+                                       << "  DNF of function:    " << dnf << std::endl
+                                       << "  optimized function: " << optimized << std::endl;
+                }
+            }
+        }
 
-TEST_END
+    TEST_END
 }
 
 /**

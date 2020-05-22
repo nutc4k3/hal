@@ -16,7 +16,7 @@ protected:
     virtual void SetUp()
     {
         NO_COUT_BLOCK;
-        gate_library_manager::load_all();
+        // gate_library_manager::load_all();
     }
 
     virtual void TearDown()
@@ -24,7 +24,6 @@ protected:
     }
 };
 
-#ifdef DONT_BUILD
 
 /**
  * Testing the constructor of the net
@@ -90,17 +89,6 @@ TEST_F(net_test, check_set_src){
             bool suc                      = test_net->add_source(t_gate, "O");
             EXPECT_TRUE(suc);
             EXPECT_EQ(test_net->get_source(), get_endpoint(t_gate, "O"));
-        }
-        {
-            // Change the source of the net (valid gate and pin_type)
-            std::shared_ptr<netlist> nl   = create_empty_netlist(MIN_NETLIST_ID+0);
-            std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
-            auto t_gate_0                 = create_test_gate(nl, MIN_GATE_ID+1);
-            auto t_gate_1                 = create_test_gate(nl, MIN_GATE_ID+2);
-            test_net->add_source(t_gate_0, "O");
-            bool suc = test_net->add_source(t_gate_1, "O");
-            EXPECT_TRUE(suc);
-            EXPECT_EQ(test_net->get_source(), get_endpoint(t_gate_1, "O"));
         }
 
         // Negative
@@ -184,16 +172,16 @@ TEST_F(net_test, check_remove_src){
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
             auto t_gate                   = create_test_gate(nl, MIN_GATE_ID+1);
             test_net->add_source(t_gate, "O");
-            bool suc = test_net->remove_src();
+            bool suc = test_net->remove_source(t_gate, "O");
             EXPECT_TRUE(is_empty(test_net->get_source()));
             EXPECT_TRUE(suc);
         }
         {
-            // Remove the source if no source exists
+            // Remove the source if the passed parameters do not define any source
             NO_COUT_TEST_BLOCK;
             std::shared_ptr<netlist> nl   = create_empty_netlist(MIN_NETLIST_ID+0);
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
-            bool suc                      = test_net->remove_src();
+            bool suc                      = test_net->remove_source(nullptr, "");
             EXPECT_TRUE(is_empty(test_net->get_source()));
             EXPECT_FALSE(suc);
         }
@@ -203,9 +191,9 @@ TEST_F(net_test, check_remove_src){
 /**
  * Testing the function which removes a destination
  *
- * Functions: remove_dst, get_num_of_dsts
+ * Functions: remove_destination, get_num_of_destinations
  */
-TEST_F(net_test, check_add_remove_dst){
+TEST_F(net_test, check_add_remove_destination){
     TEST_START
         {
             // Remove a destination in the normal way
@@ -214,11 +202,11 @@ TEST_F(net_test, check_add_remove_dst){
             auto t_gate                   = create_test_gate(nl, MIN_GATE_ID+1);
             test_net->add_destination(t_gate, "I0");
 
-            bool suc = test_net->remove_dst(t_gate, "I0");
+            bool suc = test_net->remove_destination(t_gate, "I0");
 
             EXPECT_TRUE(suc);
-            EXPECT_TRUE(test_net->get_dsts().empty());
-            EXPECT_EQ(test_net->get_num_of_dsts(), (size_t)0);
+            EXPECT_TRUE(test_net->get_destinations().empty());
+            EXPECT_EQ(test_net->get_num_of_destinations(), (size_t)0);
         }
         {
             // Remove the same destination twice
@@ -227,13 +215,13 @@ TEST_F(net_test, check_add_remove_dst){
             auto t_gate                   = create_test_gate(nl, MIN_GATE_ID+1);
             test_net->add_destination(t_gate, "I0");
 
-            test_net->remove_dst(t_gate, "I0");
+            test_net->remove_destination(t_gate, "I0");
             NO_COUT_TEST_BLOCK;
-            bool suc = test_net->remove_dst(t_gate, "I0");
+            bool suc = test_net->remove_destination(t_gate, "I0");
 
             EXPECT_FALSE(suc);
-            EXPECT_TRUE(test_net->get_dsts().empty());
-            EXPECT_EQ(test_net->get_num_of_dsts(), 0);
+            EXPECT_TRUE(test_net->get_destinations().empty());
+            EXPECT_EQ(test_net->get_num_of_destinations(), 0);
         }
         // NEGATIVE
         {
@@ -242,7 +230,7 @@ TEST_F(net_test, check_add_remove_dst){
             std::shared_ptr<netlist> nl   = create_empty_netlist(MIN_NETLIST_ID+0);
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
 
-            bool suc = test_net->remove_dst(nullptr, "I0");
+            bool suc = test_net->remove_destination(nullptr, "I0");
 
             EXPECT_FALSE(suc);
         }
@@ -251,9 +239,9 @@ TEST_F(net_test, check_add_remove_dst){
             NO_COUT_TEST_BLOCK;
             std::shared_ptr<netlist> nl   = create_empty_netlist(MIN_NETLIST_ID+0);
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
-            std::shared_ptr<gate> t_gate  = nl->create_gate(MIN_GATE_ID+0, get_gate_type_by_name("INV"), "t_gate");
+            std::shared_ptr<gate> t_gate  = nl->create_gate(MIN_GATE_ID+0, get_gate_type_by_name("gate_1_to_1"), "t_gate");
 
-            bool suc = test_net->remove_dst(t_gate, "I0");
+            bool suc = test_net->remove_destination(t_gate, "I0");
 
             EXPECT_FALSE(suc);
         }
@@ -264,7 +252,7 @@ TEST_F(net_test, check_add_remove_dst){
 /**
  * Testing the function which adds a destination
  *
- * Functions: add_dst, get_num_of_dsts
+ * Functions: add_dst, get_num_of_destinations
  */
 TEST_F(net_test, check_add_dst){
     TEST_START
@@ -276,8 +264,8 @@ TEST_F(net_test, check_add_dst){
             auto t_gate                = create_test_gate(nl, MIN_GATE_ID+1);
             bool suc                   = test_net->add_destination(t_gate, "I0");
             std::vector<endpoint> dsts = {get_endpoint(t_gate, "I0")};
-            EXPECT_EQ(test_net->get_dsts(), dsts);
-            EXPECT_EQ(test_net->get_num_of_dsts(), (size_t)1);
+            EXPECT_EQ(test_net->get_destinations(), dsts);
+            EXPECT_EQ(test_net->get_num_of_destinations(), (size_t)1);
             EXPECT_TRUE(suc);
         }
         {
@@ -290,8 +278,8 @@ TEST_F(net_test, check_add_dst){
             test_net->add_destination(t_gate, "I0");
             bool suc                   = test_net->add_destination(t_gate, "I0");
             std::vector<endpoint> dsts = {get_endpoint(t_gate, "I0")};
-            EXPECT_EQ(test_net->get_dsts(), dsts);
-            EXPECT_EQ(test_net->get_num_of_dsts(), (size_t)1);
+            EXPECT_EQ(test_net->get_destinations(), dsts);
+            EXPECT_EQ(test_net->get_num_of_destinations(), (size_t)1);
             EXPECT_FALSE(suc);
         }
 
@@ -304,21 +292,21 @@ TEST_F(net_test, check_add_dst){
             bool suc                      = test_net->add_destination(nullptr, "I0");
 
             EXPECT_FALSE(suc);
-            EXPECT_TRUE(test_net->get_dsts().empty());
-            EXPECT_EQ(test_net->get_num_of_dsts(), (size_t)0);
+            EXPECT_TRUE(test_net->get_destinations().empty());
+            EXPECT_EQ(test_net->get_num_of_destinations(), (size_t)0);
         }
         {
             // The gate isn't part of the netlist
             NO_COUT_TEST_BLOCK;
             std::shared_ptr<netlist> nl   = create_empty_netlist(MIN_NETLIST_ID+0);
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
-            std::shared_ptr<gate> t_gate  = nl->create_gate(MIN_GATE_ID+0, get_gate_type_by_name("INV"), "t_gate");
+            std::shared_ptr<gate> t_gate  = nl->create_gate(MIN_GATE_ID+0, get_gate_type_by_name("gate_1_to_1"), "t_gate");
             // gate isn't added
             bool suc = test_net->add_destination(t_gate, "I0");
 
             EXPECT_FALSE(suc);
-            EXPECT_TRUE(test_net->get_dsts().empty());
-            EXPECT_EQ(test_net->get_num_of_dsts(), (size_t)0);
+            EXPECT_TRUE(test_net->get_destinations().empty());
+            EXPECT_EQ(test_net->get_num_of_destinations(), (size_t)0);
         }
         {
             // The pin to connect is weather an input pin nor an inout pin (but an output pin)
@@ -329,8 +317,8 @@ TEST_F(net_test, check_add_dst){
             bool suc                      = test_net->add_destination(t_gate, "O");
 
             EXPECT_FALSE(suc);
-            EXPECT_TRUE(test_net->get_dsts().empty());
-            EXPECT_EQ(test_net->get_num_of_dsts(), (size_t)0);
+            EXPECT_TRUE(test_net->get_destinations().empty());
+            EXPECT_EQ(test_net->get_num_of_destinations(), (size_t)0);
         }
         {
             // The pin is already occupied (example netlist is used)
@@ -340,18 +328,18 @@ TEST_F(net_test, check_add_dst){
             bool suc                      = test_net->add_destination(nl->get_gate_by_id(MIN_GATE_ID+0), "I1");
 
             EXPECT_FALSE(suc);
-            EXPECT_TRUE(test_net->get_dsts().empty());
-            EXPECT_EQ(test_net->get_num_of_dsts(), (size_t)0);
+            EXPECT_TRUE(test_net->get_destinations().empty());
+            EXPECT_EQ(test_net->get_num_of_destinations(), (size_t)0);
         }
     TEST_END
 }
 
 /**
- * Testing the function is_a_dst
+ * Testing the function is_a_destination
  *
- * Functions: is_a_dst
+ * Functions: is_a_destination
  */
-TEST_F(net_test, check_is_a_dst){
+TEST_F(net_test, check_is_a_destination){
     TEST_START
         {
             // Gate is a destination
@@ -359,7 +347,7 @@ TEST_F(net_test, check_is_a_dst){
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
             auto t_gate                   = create_test_gate(nl, MIN_GATE_ID+1);
             test_net->add_destination(t_gate, "I2");
-            EXPECT_TRUE(test_net->is_a_dst(t_gate));
+            EXPECT_TRUE(test_net->is_a_destination(get_endpoint(t_gate, "I2")));
         }
         {
             // Gate is not a destination
@@ -368,7 +356,7 @@ TEST_F(net_test, check_is_a_dst){
             auto t_gate                   = create_test_gate(nl, MIN_GATE_ID+1);
             auto no_dest_gate             = create_test_gate(nl, MIN_GATE_ID+2);
             test_net->add_destination(t_gate, "I2");
-            EXPECT_FALSE(test_net->is_a_dst(no_dest_gate));
+            EXPECT_FALSE(test_net->is_a_destination(no_dest_gate, "I2"));
         }
         {
             // Gate is a destination (pass the connected pin type)
@@ -376,8 +364,8 @@ TEST_F(net_test, check_is_a_dst){
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
             auto t_gate                   = create_test_gate(nl, MIN_GATE_ID+1);
             test_net->add_destination(t_gate, "I2");
-            EXPECT_TRUE(test_net->is_a_dst(t_gate));
-            EXPECT_TRUE(test_net->is_a_dst({t_gate, "I2"}));
+            EXPECT_TRUE(test_net->is_a_destination(t_gate, "I2"));
+            EXPECT_TRUE(test_net->is_a_destination(get_endpoint(t_gate, "I2")));
         }
         {
             // Gate is a destination but the pin type doesn't match
@@ -385,8 +373,8 @@ TEST_F(net_test, check_is_a_dst){
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
             auto t_gate                   = create_test_gate(nl, MIN_GATE_ID+1);
             test_net->add_destination(t_gate, "I2");
-            EXPECT_TRUE(test_net->is_a_dst(t_gate));
-            EXPECT_FALSE(test_net->is_a_dst({t_gate, "A(4)"}));
+            EXPECT_TRUE(test_net->is_a_destination(t_gate, "I2"));
+            EXPECT_FALSE(test_net->is_a_destination(t_gate, "I1"));
         }
         {
             // Gate is a destination but the pin type doesn't exist
@@ -394,37 +382,35 @@ TEST_F(net_test, check_is_a_dst){
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
             auto t_gate                   = create_test_gate(nl, MIN_GATE_ID+1);
             test_net->add_destination(t_gate, "I2");
-            EXPECT_TRUE(test_net->is_a_dst(t_gate));
-            EXPECT_FALSE(test_net->is_a_dst({t_gate, "NEx_PIN"}));
+            EXPECT_TRUE(test_net->is_a_destination(t_gate, "I2"));
+            EXPECT_FALSE(test_net->is_a_destination(t_gate, "NEx_PIN"));
         }
-
         // NEGATIVE
-
         {
             // Gate is a nullptr
             NO_COUT_TEST_BLOCK;
             std::shared_ptr<netlist> nl   = create_empty_netlist(MIN_NETLIST_ID+0);
             std::shared_ptr<net> test_net = nl->create_net(MIN_NET_ID+1, "test_net");
 
-            EXPECT_FALSE(test_net->is_a_dst(nullptr));
+            EXPECT_FALSE(test_net->is_a_destination(nullptr, ""));
         }
 
     TEST_END
 }
 
 /**
- * Testing the function get_dsts
+ * Testing the function get_destinations
  *
- * Functions: get_dsts, get_dsts_by_type
+ * Functions: get_destinations, get_destinations_by_type
  */
-TEST_F(net_test, check_get_dsts)
+TEST_F(net_test, check_get_destinations)
 {
     TEST_START
         // Create a net with two different destinations (AND3 and INV gate)
         std::shared_ptr<netlist> nl    = create_empty_netlist(MIN_NETLIST_ID+0);
         std::shared_ptr<net> test_net  = nl->create_net(MIN_NET_ID+1, "test_net");
         auto mult_gate                 = create_test_gate(nl, MIN_GATE_ID+1);
-        std::shared_ptr<gate> inv_gate = nl->create_gate(MIN_GATE_ID+2, get_gate_type_by_name("INV"), "gate_1");
+        std::shared_ptr<gate> inv_gate = nl->create_gate(MIN_GATE_ID+2, get_gate_type_by_name("gate_1_to_1"), "gate_1");
         test_net->add_destination(mult_gate, "I0");
         test_net->add_destination(inv_gate, "I");
 
@@ -432,12 +418,12 @@ TEST_F(net_test, check_get_dsts)
             // Get the destinations
             std::vector<endpoint> dsts = {get_endpoint(mult_gate, "I0"), get_endpoint(inv_gate, "I")};
 
-            EXPECT_TRUE(vectors_have_same_content(test_net->get_dsts(), dsts));
+            EXPECT_TRUE(vectors_have_same_content(test_net->get_destinations(), dsts));
         }
         {
             // Get the destinations by passing a gate type
             std::vector<endpoint> dsts = {get_endpoint(inv_gate, "I")};
-            EXPECT_TRUE(vectors_have_same_content(test_net->get_dsts([](auto ep){return ep.gate->get_type()->get_name() == "INV";}), dsts));
+            EXPECT_TRUE(vectors_have_same_content(test_net->get_destinations(endpoint_type_filter("gate_1_to_1")), dsts));
         }
     TEST_END
 }
@@ -525,5 +511,3 @@ TEST_F(net_test, check_global_nets)
 
     TEST_END
 }
-
-#endif // DONT_BUILD
