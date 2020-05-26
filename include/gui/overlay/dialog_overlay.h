@@ -10,12 +10,9 @@ class dialog_overlay : public overlay
     Q_OBJECT
 
 public:
-    dialog_overlay(QWidget* parent = nullptr);
+    explicit dialog_overlay(QWidget* parent = nullptr);
 
     void set_widget(QWidget* widget);
-
-//protected:
-//    void resizeEvent(QResizeEvent* event) Q_DECL_OVERRIDE;
 
 private:
     QVBoxLayout* m_layout;

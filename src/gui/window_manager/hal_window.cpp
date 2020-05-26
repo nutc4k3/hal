@@ -1,8 +1,8 @@
 #include "window_manager/hal_window.h"
 
-#include "gui_globals.h"
-#include "overlay/overlay.h"
-#include "window_manager/hal_window_effect_area.h"
+#include "gui/gui_globals.h"
+#include "gui/overlay/overlay.h"
+#include "gui/window_manager/hal_window_effect_area.h"
 
 #include <QAction>
 #include <QGraphicsBlurEffect>
@@ -25,33 +25,27 @@ void hal_window::lock()
 
         m_overlay = new overlay(this); // DEBUG CODE, USE FACTORY AND STYLESHEETS ?
         m_effect = new QGraphicsBlurEffect();
+
         //m_effect->setBlurHints(QGraphicsBlurEffect::QualityHint);
-        //m_layout_container->setGraphicsEffect(m_effect);
 
-//        QGraphicsBlurEffect* effect = new QGraphicsBlurEffect();
-//        effect->setBlurHints(QGraphicsBlurEffect::QualityHint);
-//        m_toolbar->setGraphicsEffect(effect);
-
-//        QGraphicsBlurEffect* effect2 = new QGraphicsBlurEffect();
-//        effect2->setBlurHints(QGraphicsBlurEffect::QualityHint);
-//        m_workspace->setGraphicsEffect(effect2);
+        m_effect_area->setGraphicsEffect(m_effect);
 
         m_overlay->setParent(this);
         m_overlay->show();
         connect(m_overlay, &overlay::clicked, g_window_manager, &window_manager::handle_overlay_clicked);
-        // FADE IN ???
     }
 }
 
 void hal_window::unlock()
 {
-    if (m_overlay)
+    if (!m_effect_area->isEnabled())
     {
         m_effect_area->setEnabled(true);
 
-        // FADE OUT ???
-        m_effect->deleteLater();
-        m_overlay->deleteLater();
+        delete m_effect;
+        delete m_overlay;
+
+        m_effect = nullptr;
         m_overlay = nullptr;
     }
 }
@@ -91,51 +85,11 @@ overlay* hal_window::get_overlay()
     return m_overlay;
 }
 
-//void hal_window::paintEvent(QPaintEvent* event)
-// {
-//    Q_UNUSED(event)
-
-//    // LEFT EMPTY INTENTIONALLY
-// }
-
-//bool hal_window::event(QEvent* event)
-//{
-//    if (event->type() == QEvent::WindowStateChange)
-//    {
-//        if (isMinimized())
-//        {
-//            //hide();
-//            //event->accept();
-//            event->ignore(); // TEST
-//            // NOTIFIY WINDOW MANAGER
-//            return true;
-//        }
-//    }
-
-//    QWidget::event(event);
-//}
-
 void hal_window::closeEvent(QCloseEvent* event)
 {
     g_window_manager->handle_window_close_request(this);
     event->ignore();
 }
-
-//void hal_window::changeEvent(QEvent* event)
-//{
-//    if (event->type() == QEvent::WindowStateChange)
-//    {
-//        if( windowState() == Qt::WindowMinimized )
-//        {
-//            event->accept();
-//        }
-//        else if( windowState() == Qt::WindowNoState )
-//        {
-//            event->accept();
-//            // ???
-//        }
-//    }
-//}
 
 void hal_window::resizeEvent(QResizeEvent* event)
 {

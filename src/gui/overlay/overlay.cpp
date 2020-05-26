@@ -5,9 +5,9 @@
 
 overlay::overlay(QWidget* parent) : QFrame(parent)
 {
-//    setAttribute(Qt::WA_NoSystemBackground);
-//    setAttribute(Qt::WA_TranslucentBackground);
-    //setAttribute(Qt::WA_TransparentForMouseEvents);
+    // setAttribute(Qt::WA_NoSystemBackground);
+    // setAttribute(Qt::WA_TranslucentBackground);
+    // setAttribute(Qt::WA_TransparentForMouseEvents);
     handle_parent_changed();
 }
 
@@ -21,7 +21,6 @@ bool overlay::eventFilter(QObject* watched, QEvent* event)
             raise();
     }
 
-    // PASS UNHANDLED EVENTS TO BASE CLASS
     return QFrame::eventFilter(watched, event);
 }
 
@@ -41,7 +40,6 @@ bool overlay::event(QEvent* event)
         return true;
     }
 
-    // PASS UNHANDLED EVENTS TO BASE CLASS
     return QFrame::event(event);
 }
 

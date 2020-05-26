@@ -28,10 +28,7 @@ public:
     overlay* get_overlay();
 
 protected:
-    //void paintEvent(QPaintEvent* event) Q_DECL_OVERRIDE;
-    //bool event(QEvent* event) Q_DECL_OVERRIDE;
     void closeEvent(QCloseEvent* event) override;
-//    void changeEvent(QEvent* event) Q_DECL_OVERRIDE;
     void resizeEvent(QResizeEvent* event) override;
 
 private:

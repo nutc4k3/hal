@@ -19,18 +19,10 @@ void dialog_overlay::set_widget(QWidget* widget)
 
     m_widget = widget;
 
-    widget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    m_widget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
     m_layout->addWidget(widget, Qt::AlignCenter);
     m_layout->setAlignment(widget, Qt::AlignCenter);
 
     m_widget->show();
-
-    // OLD
-    //    m_widget->setParent(this);
-    //    m_widget->resize(m_widget->sizeHint());
 }
-
-//void dialog_overlay::resizeEvent(QResizeEvent* event)
-//{
-
-//}
