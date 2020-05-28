@@ -18,7 +18,7 @@ protected:
     virtual void SetUp()
     {
         NO_COUT_BLOCK;
-        gate_library_manager::load_all();
+        //gate_library_manager::load_all();
     }
 
     virtual void TearDown()

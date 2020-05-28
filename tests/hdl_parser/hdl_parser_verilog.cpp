@@ -1292,6 +1292,107 @@ TEST_F(hdl_parser_verilog_test, check_direct_assignment){
     TEST_END
 }
 
+/**
+ * Testing the port assignment of multiple pins and nets using pin groups and signal vectors
+ *
+ * Functions: parse
+ */
+TEST_F(hdl_parser_verilog_test, check_pin_group_port_assignment){
+
+    TEST_START
+        {
+            // Connect an entire output pin group with global input nets by using a binary string ('b10101010)
+            std::stringstream input("module top (\n"
+                                    " ) ;\n"
+                                    "  wire [0:3] l_vec;\n"
+                                    "  wire net_1 ;\n"
+                                    "pin_group_gate_4_to_4 gate_0 (\n"
+                                    "  .I ('b0101)\n"
+                                    " ) ;\n"
+                                    "endmodule");
+            test_def::capture_stdout();
+            hdl_parser_verilog verilog_parser(input);
+            std::shared_ptr<netlist> nl = verilog_parser.parse_and_instantiate(m_gl);
+            if (nl == nullptr)
+            {
+                std::cout << test_def::get_captured_stdout();
+            }
+            else
+            {
+                test_def::get_captured_stdout();
+            }
+
+            ASSERT_NE(nl, nullptr);
+            ASSERT_FALSE(nl->get_gates(gate_filter("pin_group_gate_4_to_4", "gate_0")).empty());
+            std::shared_ptr<gate> gate_0 = *(nl->get_gates(gate_filter("pin_group_gate_4_to_4" ,"gate_0")).begin());
+
+            EXPECT_EQ(gate_0->get_fan_in_nets().size(), 2);
+
+            std::shared_ptr<net> net_0 = gate_0->get_fan_in_net("I(0)");
+            ASSERT_NE(net_0, nullptr);
+            EXPECT_EQ(net_0->get_name(), "'0'");
+
+            std::shared_ptr<net> net_1 = gate_0->get_fan_in_net("I(1)");
+            ASSERT_NE(net_1, nullptr);
+            EXPECT_EQ(net_1->get_name(), "'1'");
+
+            std::shared_ptr<net> net_2 = gate_0->get_fan_in_net("I(2)");
+            ASSERT_NE(net_2, nullptr);
+            EXPECT_EQ(net_2->get_name(), "'0'");
+
+            std::shared_ptr<net> net_3 = gate_0->get_fan_in_net("I(3)");
+            ASSERT_NE(net_3, nullptr);
+            EXPECT_EQ(net_3->get_name(), "'1'");
+        }
+        {
+            // Connect a vector of output pins with a vector of nets (O(0) with l_vec(0),...,O(4) with l_vec(4))
+            std::stringstream input("module top (\n"
+                                    " ) ;\n"
+                                    "  wire [0:3] l_vec;\n"
+                                    "  wire net_1 ;\n"
+                                    "pin_group_gate_4_to_4 gate_0 (\n"
+                                    "  .O (l_vec)\n"
+                                    " ) ;\n"
+                                    "endmodule");
+            test_def::capture_stdout();
+            hdl_parser_verilog verilog_parser(input);
+            std::shared_ptr<netlist> nl = verilog_parser.parse_and_instantiate(m_gl);
+            if (nl == nullptr)
+            {
+                std::cout << test_def::get_captured_stdout();
+            }
+            else
+            {
+                test_def::get_captured_stdout();
+            }
+
+            ASSERT_NE(nl, nullptr);
+            ASSERT_FALSE(nl->get_gates(gate_filter("pin_group_gate_4_to_4", "gate_0")).empty());
+            std::shared_ptr<gate> gate_0 = *(nl->get_gates(gate_filter("pin_group_gate_4_to_4" ,"gate_0")).begin());
+
+            EXPECT_EQ(gate_0->get_fan_out_nets().size(), 4);
+
+            std::shared_ptr<net> net_0 = gate_0->get_fan_out_net("O(0)");
+            ASSERT_NE(net_0, nullptr);
+            EXPECT_EQ(net_0->get_name(), "l_vec(0)");
+
+            std::shared_ptr<net> net_1 = gate_0->get_fan_out_net("O(1)");
+            ASSERT_NE(net_1, nullptr);
+            EXPECT_EQ(net_1->get_name(), "l_vec(1)");
+
+            std::shared_ptr<net> net_2 = gate_0->get_fan_out_net("O(2)");
+            ASSERT_NE(net_2, nullptr);
+            EXPECT_EQ(net_2->get_name(), "l_vec(2)");
+
+            std::shared_ptr<net> net_3 = gate_0->get_fan_out_net("O(3)");
+            ASSERT_NE(net_3, nullptr);
+            EXPECT_EQ(net_3->get_name(), "l_vec(3)");
+        }
+
+
+    TEST_END
+}
+
 /*#########################################################################
    Verilog Specific Tests (Tests that can not be directly applied to VHDL)
   #########################################################################*/

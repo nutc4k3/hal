@@ -658,8 +658,8 @@ TEST_F(gate_library_parser_liberty_test, check_invalid_input)
             EXPECT_EQ(gl->get_gate_types().at("TEST_GATE_TYPE")->get_base_type(), gate_type::base_type::combinatorial);
         }
         {
-            // Define a pin twice (ISSUE: Pin can be defined twice. Both are added, but only the boolean function of the second one is stored)
-            //NO_COUT_TEST_BLOCK;
+            // Define a pin twice
+            NO_COUT_TEST_BLOCK;
             std::stringstream input("library (TEST_GATE_LIBRARY) {\n"
                                     "    define(cell);\n"
                                     "    cell(TEST_GATE_TYPE) {\n"
@@ -679,15 +679,12 @@ TEST_F(gate_library_parser_liberty_test, check_invalid_input)
             gate_library_parser_liberty liberty_parser(input);
             std::shared_ptr<gate_library> gl = liberty_parser.parse();
 
-            ASSERT_NE(gl, nullptr);
+            EXPECT_EQ(gl, nullptr);
 
-            ASSERT_TRUE(gl->get_gate_types().find("TEST_GATE_TYPE") != gl->get_gate_types().end());
-            EXPECT_EQ(gl->get_gate_types().at("TEST_GATE_TYPE")->get_base_type(), gate_type::base_type::combinatorial);
-            // EXPECT_EQ(gl->get_gate_types().at("TEST_GATE_TYPE")->get_output_pins().size(), 1); // ISSUE
         }
         {
-            // Define a gate type twice (ISSUE: Gate can be defined twice, but only the first one is added with no warning)
-            //NO_COUT_TEST_BLOCK;
+            // Define a gate type twice
+            NO_COUT_TEST_BLOCK;
             std::stringstream input("library (TEST_GATE_LIBRARY) {\n"
                                     "    define(cell);\n"
                                     "    cell(TEST_GATE_TYPE) {\n"
@@ -699,7 +696,7 @@ TEST_F(gate_library_parser_liberty_test, check_invalid_input)
                                     "            function: \"!I\";\n"
                                     "        }\n"
                                     "    }\n"
-                                    "    cell(TEST_GATE_TYPE) {\n"  // <- is ignored ISSUE?
+                                    "    cell(TEST_GATE_TYPE) {\n"
                                     "        pin(I0) {\n"
                                     "            direction: input;\n"
                                     "        }\n"
@@ -712,11 +709,7 @@ TEST_F(gate_library_parser_liberty_test, check_invalid_input)
             gate_library_parser_liberty liberty_parser(input);
             std::shared_ptr<gate_library> gl = liberty_parser.parse();
 
-            ASSERT_NE(gl, nullptr);
-
-            ASSERT_TRUE(gl->get_gate_types().find("TEST_GATE_TYPE") != gl->get_gate_types().end());
-            EXPECT_EQ(gl->get_gate_types().at("TEST_GATE_TYPE")->get_base_type(), gate_type::base_type::combinatorial);
-            // EXPECT_EQ(gl->get_gate_types().at("TEST_GATE_TYPE")->get_output_pins().size(), 1); // ISSUE
+            EXPECT_EQ(gl, nullptr);
         }
         {
             // Pin got no direction (should be ignored)
