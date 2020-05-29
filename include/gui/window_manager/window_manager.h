@@ -1,10 +1,9 @@
-#ifndef WINDOW_MANAGER_H
-#define WINDOW_MANAGER_H
+#pragma once
 
 #include <QObject>
 #include <QVector>
 
-class hal_window;
+class Window;
 class main_settings_widget;
 class plugin_schedule_widget;
 class welcome_screen;
@@ -22,8 +21,8 @@ public:
     void setup();
 
     void add_window();
-    void remove_window(hal_window* window);
-    void set_main_window(hal_window* window);
+    void remove_window(Window* Window);
+    void set_main_window(Window* Window);
 
     void lock_all();
     void unlock_all();
@@ -31,7 +30,7 @@ public:
     void save_layout(const QString& name);
     void restore_layout(const QString& name);
 
-    void handle_window_close_request(hal_window* window);
+    void handle_window_close_request(Window* Window);
 
     void repolish();
 
@@ -49,9 +48,9 @@ private Q_SLOTS:
     void handle_action_about();
 
 private:
-    hal_window* m_main_window;
+    Window* m_main_window;
 
-    QVector<hal_window*> m_windows;
+    QVector<Window*> m_windows;
 
     bool m_static_windows;
     bool m_shared_minimize;
@@ -70,5 +69,3 @@ private:
     plugin_schedule_widget* m_plugin_schedule_widget;
     main_settings_widget* m_main_settings_widget;
 };
-
-#endif // WINDOW_MANAGER_H

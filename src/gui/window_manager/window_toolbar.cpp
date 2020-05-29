@@ -1,4 +1,4 @@
-#include "window_manager/hal_window_toolbar.h"
+#include "gui/window_manager/window_toolbar.h"
 
 #include <QActionEvent>
 #include <QEvent>
@@ -6,20 +6,19 @@
 #include <QStyle>
 #include <QToolButton>
 
-hal_window_toolbar::hal_window_toolbar(QWidget* parent) : QFrame(parent),
+window_toolbar::window_toolbar(QWidget* parent) : QFrame(parent),
     m_layout(new QHBoxLayout(this))
 {
     m_layout->setContentsMargins(0, 0, 0, 0);
     m_layout->setSpacing(2); // USE PROPERTY
 }
 
-void hal_window_toolbar::add_widget(QWidget* widget)
+void window_toolbar::add_widget(QWidget* widget)
 {
-    // ADD FANCY ANIMATIONS MAYBE ?
     m_layout->addWidget(widget);
 }
 
-void hal_window_toolbar::add_spacer()
+void window_toolbar::add_spacer()
 {
     QWidget* spacer = new QWidget(this);
     spacer->setAttribute(Qt::WA_NoSystemBackground);
@@ -28,7 +27,7 @@ void hal_window_toolbar::add_spacer()
     m_layout->addWidget(spacer);
 }
 
-void hal_window_toolbar::clear()
+void window_toolbar::clear()
 {
     QLayoutItem* item = nullptr;
     while ((item = m_layout->takeAt(0)))
@@ -43,7 +42,7 @@ void hal_window_toolbar::clear()
     }
 }
 
-void hal_window_toolbar::repolish()
+void window_toolbar::repolish()
 {
     QStyle* s = style();
 
@@ -51,7 +50,7 @@ void hal_window_toolbar::repolish()
     s->polish(this);
 }
 
-void hal_window_toolbar::actionEvent(QActionEvent* event)
+void window_toolbar::actionEvent(QActionEvent* event)
 {
     switch (event->type())
     {

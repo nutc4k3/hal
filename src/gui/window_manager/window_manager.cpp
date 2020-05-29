@@ -1,16 +1,18 @@
-#include "window_manager/window_manager.h"
+#include "gui/window_manager/window_manager.h"
 
-#include "overlay/overlay.h"
-#include "plugin_management/plugin_schedule_widget.h"
-#include "settings/main_settings_widget.h"
-#include "style/style.h"
-#include "style/shared_properties_qss_adapter.h"
-#include "welcome_screen/welcome_screen.h"
-#include "window_manager/hal_window.h"
-#include "window_manager/hal_window_toolbar.h"
+#include "gui/overlay/overlay.h"
+#include "gui/plugin_management/plugin_schedule_widget.h"
+#include "gui/settings/main_settings_widget.h"
+#include "gui/style/style.h"
+#include "gui/style/shared_properties_qss_adapter.h"
+#include "gui/welcome_screen/welcome_screen.h"
+#include "gui/window_manager/window.h"
+#include "gui/window_manager/window_toolbar.h"
 
 #include <QAction>
+#include <QGraphicsBlurEffect>
 #include <QShortcut>
+
 #include <QDebug>
 
 window_manager::window_manager(QObject* parent) : QObject(parent),
@@ -61,16 +63,16 @@ window_manager::window_manager(QObject* parent) : QObject(parent),
 
 void window_manager::add_window()
 {
-    hal_window* window = new hal_window(nullptr);
-    m_windows.append(window);
+    Window* w = new Window(nullptr);
+    m_windows.append(w);
 
     if (!m_main_window)
-        set_main_window(window);
+        set_main_window(w);
 
-    window->show();
+    w->show();
 }
 
-void window_manager::remove_window(hal_window* window)
+void window_manager::remove_window(Window* window)
 {
     if (!window)
         return;
@@ -88,8 +90,9 @@ void window_manager::remove_window(hal_window* window)
     }
 }
 
-void window_manager::set_main_window(hal_window* window)
+void window_manager::set_main_window(Window* window)
 {
+    /*
     if (m_main_window)
         m_main_window->get_toolbar()->clear();
     // REMOVE CORRECT ACTIONS
@@ -99,7 +102,7 @@ void window_manager::set_main_window(hal_window* window)
     // CHANGE TOOLBAR CONTENT DEPENDING ON APPLICATION STATE
     // ADD FANCY ANIMATION
     // WRITE OWN TOOLBAR CLASS BECAUSE QT CLASS SUCKS
-    hal_window_toolbar* t = window->get_toolbar();
+    window_toolbar* t = window->get_toolbar();
 
     t->addAction(m_action_open_file);
     t->addAction(m_action_save);
@@ -110,21 +113,32 @@ void window_manager::set_main_window(hal_window* window)
     t->addAction(m_action_settings);
 
     m_main_window = window;
+    */
 }
 
 void window_manager::lock_all()
 {
-    for (hal_window*& window : m_windows)
-        window->lock();
+    for (Window*& window : m_windows)
+    {
+        //DEBUG CODE
+        overlay* o = new overlay();
+        QGraphicsBlurEffect* e = new QGraphicsBlurEffect();
+
+        e->setBlurHints(QGraphicsBlurEffect::QualityHint);
+
+        connect(o, &overlay::clicked, this, &window_manager::handle_overlay_clicked);
+
+        window->lock(o, e);
+    }
 }
 
 void window_manager::unlock_all()
 {
-    for (hal_window*& window : m_windows)
+    for (Window*& window : m_windows)
         window->unlock();
 }
 
-void window_manager::handle_window_close_request(hal_window* window)
+void window_manager::handle_window_close_request(Window* window)
 {
     Q_UNUSED(window);
     if (m_static_windows)
@@ -152,7 +166,7 @@ void window_manager::repolish()
 
     // UPDATE ICONS IN TOOLBAR
 
-    for (hal_window*& window : m_windows)
+    for (Window*& window : m_windows)
         window->repolish();
 }
 
