@@ -59,6 +59,7 @@ public:
 
     /**
      * Add an output pin to the collection of output pins that generate their output from the next_state function.
+     * The pin has to be declared as an output pin beforehand.
      *
      * @param[in] output_pin - Name of the output pin.
      */
@@ -66,6 +67,7 @@ public:
 
     /**
      * Add an output pin to the collection of output pins that generate their output from the inverted next_state function.
+     * The pin has to be declared as an output pin beforehand.
      *
      * @param[in] output_pin - Name of the output pin.
      */

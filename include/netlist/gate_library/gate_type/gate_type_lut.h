@@ -48,6 +48,7 @@ public:
 
     /**
      * Adds an output pin to the collection of output pins that generate their output not from a boolean function but an initialization string.
+     * The pin has to be declared as an output pin beforehand.
      *
      * @param[in] output_pin - The name of the output string.
      */
