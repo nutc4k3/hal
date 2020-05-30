@@ -19,8 +19,7 @@ public:
     void lock(overlay* const o, QGraphicsEffect* const e);
     void unlock();
 
-    void standard_view();
-    void special_view(QWidget* widget);
+    void set_active_widget(QWidget* widget);
 
     void repolish();
 
@@ -33,6 +32,7 @@ protected:
 
 private:
     window_effect_area* m_effect_area;
+    QWidget* m_active_widget;
     overlay* m_overlay;
     QGraphicsEffect* m_effect;
 };

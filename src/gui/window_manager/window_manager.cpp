@@ -53,7 +53,7 @@ window_manager::window_manager(QObject* parent) : QObject(parent),
     add_window();
     add_window();
 
-    m_main_window->special_view(m_welcome_screen);
+    m_main_window->set_active_widget(m_welcome_screen);
 
     // THIS WORKS, COMPARE TO HARDCODED EVENT LISTENER
     QShortcut* shortcut = new QShortcut(QKeySequence("F1"), m_windows.at(0));

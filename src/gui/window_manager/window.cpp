@@ -62,15 +62,12 @@ void Window::unlock()
     m_effect = nullptr;
 }
 
-void Window::standard_view()
+void Window::set_active_widget(QWidget* widget)
 {
-    //m_workspace->show();
-}
-
-void Window::special_view(QWidget* widget)
-{
-    //m_workspace->hide();
-    //m_inner_layout->addWidget(widget);
+    m_active_widget->hide();
+    m_active_widget = widget;
+    m_active_widget->setParent(m_effect_area);
+    update_layout();
 }
 
 void Window::repolish()
@@ -83,8 +80,6 @@ void Window::repolish()
     //m_toolbar->repolish();
     //m_workspace->repolish();
     // REPOLISH CONTENT THROUGH CONTENT MANAGER
-
-    //rearrange();
 }
 
 void Window::closeEvent(QCloseEvent* event)
