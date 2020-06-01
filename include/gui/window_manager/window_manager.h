@@ -11,7 +11,7 @@ class work_space; // TEMP NAME ?
 
 class QAction;
 
-class window_manager : public QObject
+class window_manager final : public QObject
 {
     Q_OBJECT
 

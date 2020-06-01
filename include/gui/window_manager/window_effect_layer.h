@@ -4,12 +4,12 @@
 
 class QKeyEvent;
 
-class window_effect_area final : public QWidget
+class Window_effect_layer final : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit window_effect_area(QWidget* parent = nullptr);
+    explicit Window_effect_layer(QWidget* parent = nullptr);
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;

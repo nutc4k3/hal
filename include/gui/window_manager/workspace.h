@@ -1,9 +1,8 @@
-#ifndef WORKSPACE_H
-#define WORKSPACE_H
+#pragma once
 
 #include <QFrame>
 
-class workspace : public QFrame
+class workspace final : public QFrame
 {
     Q_OBJECT
 
@@ -12,5 +11,3 @@ public:
 
     void repolish();
 };
-
-#endif // WORKSPACE_H

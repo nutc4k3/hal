@@ -2,7 +2,7 @@
 
 #include "gui/gui_globals.h"
 #include "gui/overlay/overlay.h"
-#include "gui/window_manager/window_effect_area.h"
+#include "gui/window_manager/window_effect_layer.h"
 #include "gui/window_manager/window_toolbar.h"
 #include "gui/window_manager/workspace.h"
 
@@ -13,11 +13,12 @@
 Window::Window(QWidget* parent) : QWidget(parent),
     m_toolbar(new window_toolbar(this)),
     m_workspace(new workspace(this)),
-    m_effect_area(new window_effect_area(this)),
+    m_effect_layer(new Window_effect_layer(this)),
+    m_active_widget(nullptr),
     m_overlay(nullptr),
     m_effect(nullptr)
 {
-    m_effect_area->setGeometry(0, 0, width(), height());
+    m_effect_layer->setGeometry(0, 0, width(), height());
 }
 
 void Window::update_layout()
@@ -26,19 +27,20 @@ void Window::update_layout()
 
     if (m_toolbar)
     {
-        // TOOLBAR HEIGHT CONFIGURABLE ?
-        m_toolbar->setGeometry(0, 0, s.width(), 30);
-        m_workspace->setGeometry(0, 30, s.width(), s.height() - 30);
+        const int toolbar_height = 30; // CONFIGURABLE ???
+
+        m_toolbar->setGeometry(0, 0, s.width(), toolbar_height);
+        m_active_widget->setGeometry(0, toolbar_height, s.width(), s.height() - toolbar_height);
     }
     else
-        m_workspace->setGeometry(0, 0, s.width(), s.height());
+        m_active_widget->setGeometry(0, 0, s.width(), s.height());
 }
 
 void Window::lock(overlay* const o, QGraphicsEffect* const e)
 {
-    assert(m_effect_area->isEnabled());
+    assert(m_effect_layer->isEnabled());
 
-    m_effect_area->setEnabled(false);
+    m_effect_layer->setEnabled(false);
 
     m_overlay = o;
     m_effect = e;
@@ -46,14 +48,14 @@ void Window::lock(overlay* const o, QGraphicsEffect* const e)
     m_overlay->setParent(this);
     m_overlay->show();
 
-    m_effect_area->setGraphicsEffect(m_effect);
+    m_effect_layer->setGraphicsEffect(m_effect);
 }
 
 void Window::unlock()
 {
-    assert(!m_effect_area->isEnabled());
+    assert(!m_effect_layer->isEnabled());
 
-    m_effect_area->setEnabled(true);
+    m_effect_layer->setEnabled(true);
 
     delete m_overlay;
     delete m_effect;
@@ -66,7 +68,7 @@ void Window::set_active_widget(QWidget* widget)
 {
     m_active_widget->hide();
     m_active_widget = widget;
-    m_active_widget->setParent(m_effect_area);
+    m_active_widget->setParent(m_effect_layer);
     update_layout();
 }
 
@@ -90,6 +92,6 @@ void Window::closeEvent(QCloseEvent* event)
 
 void Window::resizeEvent(QResizeEvent* event)
 {
-    m_effect_area->resize(event->size());
+    m_effect_layer->resize(event->size());
     event->accept();
 }

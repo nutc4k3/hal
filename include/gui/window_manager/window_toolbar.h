@@ -5,7 +5,7 @@
 class QActionEvent;
 class QHBoxLayout;
 
-class window_toolbar : public QFrame
+class window_toolbar final : public QFrame
 {
     Q_OBJECT
 

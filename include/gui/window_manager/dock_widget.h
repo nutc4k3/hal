@@ -1,5 +1,4 @@
-#ifndef DOCK_WIDGET_H
-#define DOCK_WIDGET_H
+#pragma once
 
 #include <QFrame>
 
@@ -21,9 +20,9 @@ public:
     explicit dock_widget(QWidget* parent = nullptr);
 
 protected:
-    void mousePressEvent(QMouseEvent* event) Q_DECL_OVERRIDE;
-    void mouseMoveEvent(QMouseEvent* event) Q_DECL_OVERRIDE;
-    void mouseReleaseEvent(QMouseEvent* event) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
 
 private:
     void init_drag(const QPoint& pos, bool nca);
@@ -32,5 +31,3 @@ private:
 
     drag_state* m_drag_state;
 };
-
-#endif // DOCK_WIDGET_H

@@ -3,7 +3,7 @@
 #include <QWidget>
 
 class overlay;
-class window_effect_area;
+class Window_effect_layer;
 class window_toolbar;
 class workspace;
 
@@ -31,7 +31,7 @@ protected:
     void resizeEvent(QResizeEvent* event) override;
 
 private:
-    window_effect_area* m_effect_area;
+    Window_effect_layer* m_effect_layer;
     QWidget* m_active_widget;
     overlay* m_overlay;
     QGraphicsEffect* m_effect;
